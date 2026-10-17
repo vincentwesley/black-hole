@@ -15,6 +15,8 @@ Done 2026-10-17 at the start of the build. Links checked on that date.
 | Wyman, Sloan, Shirley (2013), [JCGT 2(2)](https://jcgt.org/published/0002/02/01/) | Analytic CIE 1931 CMFs for Planck → sRGB. |
 | Ballesteros (2012), [arXiv:1201.1809](https://arxiv.org/abs/1201.1809) | B−V → temperature for star colours. |
 | Jimenez (2014), [CoD:AW post processing](https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare/) | 13-tap downsample / tent upsample bloom with firefly suppression. |
+| van der Kruit (2024), [arXiv:2401.15518](https://arxiv.org/abs/2401.15518), Table 3 | Milky Way surface brightness (bright clouds ≈ 20.7–20.8 V mag/arcsec²; S10 = 27.78 V mag/arcsec²) → calibration of the NASA map against the BSC stars (`MILKY_WAY_SCALE`). |
+| Snyder (1987), USGS Prof. Paper 1395 §22 | Gnomonic projection area scale 1/cos³c → cube texel solid angle (1 + u² + v²)^−3/2. |
 | Narkowicz (2015), [ACES fit](https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/) | Tone curve. |
 
 ## Existing projects
@@ -33,7 +35,7 @@ Done 2026-10-17 at the start of the build. Links checked on that date.
 ## Data
 - **Yale Bright Star Catalogue, 5th rev.** (Hoffleit & Warren 1991): [CDS V/50](https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50), file `catalog.gz` (also `http://tdc-www.harvard.edu/catalogs/bsc5.dat.gz`). Distributed freely by NASA ADC/CDS for scientific use. 9,096 usable stars → 145 KB binary via `scripts/build-stars.mjs`.
 - HYG database: CC BY-SA 4.0 (share-alike), more stars but larger; not needed.
-- NASA SVS [Deep Star Maps 2020](https://svs.gsfc.nasa.gov/4851): Milky Way panoramas (credit NASA/GSFC SVS, ESA/Gaia/DPAC). Only EXR at 4k+ (20–35 MB) or a 41 KB 1k print JPG, so not used for the MVP. Candidate for a "Milky Way" option after conversion to a compressed half-res texture.
+- NASA SVS [Deep Star Maps 2020](https://svs.gsfc.nasa.gov/4851): Milky Way panoramas built from Gaia DR2 (credit NASA/Goddard Space Flight Center Scientific Visualization Studio; Gaia: ESA/Gaia/DPAC). **Used since M3:** `milkyway_2020_4k_gal.exr` (4096×2048, ZIP half-float, galactic, bright stars removed) → `public/data/milkyway.jpg` via `scripts/build-milkyway.py`. Orientation checked against the LMC (l 280.5°, b −32.9°) and SMC positions in the map. No licence text on the page beyond the credit line; NASA imagery is generally not copyrighted in the US, and the credit is given in-app, in `CREDITS.md` and `THIRD_PARTY_NOTICES.md`.
 
 ## Platform checks
 - **WebGL2 in headless Chromium:** works through ANGLE + SwiftShader (Vulkan) in this container, including `EXT_color_buffer_float`; ~10–14 fps at 1280×720 on the Low/High presets. Good enough for e2e pixel checks.

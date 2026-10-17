@@ -20,7 +20,10 @@ uniform float uGravity;      // 0 or 1
 uniform float uTime;
 uniform float uStarGain;
 uniform float uDiskGain;
-uniform samplerCube uSky;
+uniform samplerCube uSky;      // BSC5 stars
+uniform sampler2D uMilkyWay;   // NASA SVS galactic equirect (sRGB texture, read as linear)
+uniform mat3 uWorldToGal;
+uniform float uMwGain;         // texture value -> star units (MILKY_WAY_SCALE), 0 when off
 uniform sampler2D uBlackbody; // x: log T in [tMin, tMax]; rgb unit-luminance colour, a = ln Y
 uniform vec2 uBBRange;        // ln tMin, ln tMax
 uniform sampler2D uTempTable; // x: r in [rMin, rMax]; r = T / T_max (Novikov-Thorne)
@@ -127,8 +130,25 @@ void main() {
     r = rn;
   }
 
-  if (!captured && r > 1.5 && trans > 0.01) {
-    col += trans * texture(uSky, normalize(v)).rgb * uStarGain;
+  // Sky lookups use explicit gradients taken here, in uniform control flow (implicit derivatives
+  // inside the branch below would be undefined). Gradients are dropped where a neighbour in the 2x2
+  // quad did not escape (its v is meaningless), so the shadow edge doesn't pick a blurry mip. The u
+  // derivative is wrapped for the l = ±180° seam and scaled by cos b so the poles stay sharp.
+  // The equirect mapping mirrors galacticToUv() in src/sky/stars.ts.
+  bool escaped = !captured && r > 1.5 && trans > 0.01;
+  float esc = escaped ? 1.0 : 0.0;
+  float keepX = dFdx(esc) == 0.0 ? 1.0 : 0.0, keepY = dFdy(esc) == 0.0 ? 1.0 : 0.0;
+  vec3 sd = normalize(v);
+  vec3 sdx = dFdx(sd) * keepX, sdy = dFdy(sd) * keepY;
+  vec3 g = uWorldToGal * sd;
+  float bLat = asin(clamp(g.z, -1.0, 1.0));
+  vec2 uv = vec2(0.5 - atan(g.y, g.x) / 6.2831853, 0.5 - bLat / 3.1415927);
+  vec2 uvx = dFdx(uv) * keepX, uvy = dFdy(uv) * keepY;
+  uvx.x = (uvx.x - round(uvx.x)) * cos(bLat);
+  uvy.x = (uvy.x - round(uvy.x)) * cos(bLat);
+  if (escaped) {
+    vec3 sky = textureGrad(uSky, sd, sdx, sdy).rgb + textureGrad(uMilkyWay, uv, uvx, uvy).rgb * uMwGain;
+    col += trans * sky * uStarGain;
   }
   if (uDirect > 0.5) col = toSrgb(aces(col * uExposure));
   outColor = vec4(col, 1.0);

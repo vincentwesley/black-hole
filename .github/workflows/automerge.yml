@@ -1,6 +1,7 @@
 name: Automerge
 
-# Squash-merges a PR from a claude/* branch once the CI workflow passed on it.
+# Squash-merges a PR from a claude/* branch once the CI workflow passed on it, then starts Deploy
+# (a merge pushed with GITHUB_TOKEN starts no `push` workflows; workflow_dispatch is the exception).
 # Does not check out or run any PR code.
 on:
   workflow_run:
@@ -10,6 +11,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   merge:
@@ -26,3 +28,8 @@ jobs:
           PR: ${{ github.event.workflow_run.pull_requests[0].number }}
           REPO: ${{ github.repository }}
         run: gh pr merge "$PR" --repo "$REPO" --squash --delete-branch
+      - name: Deploy main to GitHub Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh workflow run deploy.yml --repo "$REPO" --ref main

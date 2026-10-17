@@ -7,7 +7,7 @@ import upSrc from "./shaders/up.frag?raw";
 import compositeSrc from "./shaders/composite.frag?raw";
 import { blackbodyTable, blackbodyXYZ, T_REF } from "../physics/color";
 import { temperatureTable } from "../physics/disk";
-import { bakeStarFaces, placeStars, type PlacedStars, type Star } from "../sky/stars";
+import { bakeStarFaces, MILKY_WAY_SCALE, placeStars, worldToGalacticMatrix, type PlacedStars, type Star } from "../sky/stars";
 import type { Preset } from "./quality";
 
 export interface SceneParams {
@@ -22,6 +22,7 @@ export interface SceneParams {
   bloom: number; // 0..1 strength
   exposure: number;
   starGain: number;
+  milkyWay: boolean;
 }
 
 interface Target {
@@ -40,6 +41,8 @@ export class Renderer {
   private uni: { scene: Uniforms; down: Uniforms; up: Uniforms; composite: Uniforms };
   private vao: WebGLVertexArrayObject;
   private sky: WebGLTexture;
+  private milkyWay: WebGLTexture;
+  private readonly worldToGal = worldToGalacticMatrix();
   private bbTex: WebGLTexture;
   private tempTex: WebGLTexture;
   private bbRange: [number, number];
@@ -82,6 +85,22 @@ export class Renderer {
     this.tempTex = table2D(gl, tt.values, tt.values.length, gl.R16F, gl.RED);
     this.sky = gl.createTexture()!;
     this.uploadSky(1);
+    this.milkyWay = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, this.milkyWay);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); // complete without mips until the JPEG arrives
+  }
+
+  /** Milky Way equirect (sRGB image). SRGB8_ALPHA8 makes the GPU linearise it on fetch. */
+  setMilkyWay(img: TexImageSource): void {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.milkyWay);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.SRGB8_ALPHA8, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
 
   setStars(stars: Star[]): void {
@@ -160,6 +179,8 @@ export class Renderer {
     gl.uniform1f(u.uGravity, p.gravity ? 1 : 0);
     gl.uniform1f(u.uTime, p.time);
     gl.uniform1f(u.uStarGain, p.starGain);
+    gl.uniform1f(u.uMwGain, p.milkyWay ? MILKY_WAY_SCALE : 0);
+    gl.uniformMatrix3fv(u.uWorldToGal, false, this.worldToGal);
     gl.uniform1f(u.uDiskGain, 1);
     gl.uniform1f(u.uDirect, direct ? 1 : 0);
     gl.uniform1f(u.uExposure, p.exposure);
@@ -168,6 +189,7 @@ export class Renderer {
     bindTex(gl, 0, gl.TEXTURE_CUBE_MAP, this.sky, u.uSky);
     bindTex(gl, 1, gl.TEXTURE_2D, this.bbTex, u.uBlackbody);
     bindTex(gl, 2, gl.TEXTURE_2D, this.tempTex, u.uTempTable);
+    bindTex(gl, 3, gl.TEXTURE_2D, this.milkyWay, u.uMilkyWay);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     if (direct) return;
 
