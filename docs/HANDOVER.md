@@ -1,6 +1,6 @@
 # Handover
 
-_Last updated: 2026-10-17, end of milestone 2 (MVP shipped to a PR)._
+_Last updated: 2026-10-17, end of milestone 2. Branch `claude/sharp-cerf-1qllnk`, PR open; automerge squashes it into `main` once CI passes, which triggers Deploy._
 
 ## Done
 - **M1 core renderer:** Schwarzschild geodesics per pixel (WebGL2), Novikov–Thorne disk with Doppler + gravitational shifts, Physical/Film looks, BSC5 star cubemap, bloom + ACES, orbit camera (mouse/touch/keys), quality presets + governor, settings persistence, PNG snapshot, no-WebGL2 still-frame fallback.
