@@ -53,17 +53,19 @@ const outputs = {
   outer: field<HTMLOutputElement>("o-outer"),
   exposure: field<HTMLOutputElement>("o-exp"),
   bloom: field<HTMLOutputElement>("o-bloom"),
+  sky: field<HTMLOutputElement>("o-sky"),
 };
 
 function writeForm(): void {
   field<RadioNodeList>("look").value = settings.look;
   field<RadioNodeList>("quality").value = settings.quality;
-  for (const k of ["auto", "doppler", "gravity", "cruise"] as const) field(k).checked = settings[k];
-  for (const k of ["temp", "outer", "exposure", "bloom"] as const) field(k).value = String(settings[k]);
+  for (const k of ["auto", "doppler", "gravity", "cruise", "milkyWay"] as const) field(k).checked = settings[k];
+  for (const k of ["temp", "outer", "exposure", "bloom", "sky"] as const) field(k).value = String(settings[k]);
   outputs.temp.textContent = `${settings.temp} K`;
   outputs.outer.innerHTML = `${settings.outer} r<sub>s</sub>`;
   outputs.exposure.textContent = settings.exposure.toFixed(2);
   outputs.bloom.textContent = settings.bloom.toFixed(2);
+  outputs.sky.textContent = `${settings.sky.toFixed(1)}×`;
 }
 
 function readForm(e: Event): void {
@@ -91,6 +93,7 @@ const stats = { r: document.querySelector("#s-r")!, fps: document.querySelector(
 const cam = new OrbitCamera();
 const governor = new Governor();
 let renderer: Renderer | null = null;
+let milkyWayLoaded = false;
 
 function showFallback(msg?: string): void {
   const fb = document.querySelector<HTMLElement>("#fallback")!;
@@ -143,6 +146,14 @@ if (renderer) {
     .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`stars: HTTP ${r.status}`))))
     .then((buf) => renderer!.setStars(parseStars(buf)))
     .catch((err) => console.warn(err));
+  const mw = new Image();
+  mw.src = new URL("data/milkyway.jpg", document.baseURI).href;
+  mw.decode()
+    .then(() => {
+      renderer?.setMilkyWay(mw);
+      milkyWayLoaded = true;
+    })
+    .catch((err) => console.warn("milky way:", err));
   canvas.addEventListener("webglcontextlost", (e) => {
     e.preventDefault();
     showFallback("The graphics context was lost. Reload the page to restart the render.");
@@ -237,7 +248,8 @@ function params(): SceneParams {
     gravity: settings.gravity,
     bloom: settings.bloom,
     exposure: settings.exposure,
-    starGain: 6,
+    starGain: 6 * settings.sky,
+    milkyWay: settings.milkyWay,
   };
 }
 
@@ -296,11 +308,12 @@ document.querySelector("#snap")!.addEventListener("click", () => {
 // Test hook: lets e2e read back a frame without preserveDrawingBuffer.
 declare global {
   interface Window {
-    __bh?: { ready: () => boolean; setCamera: (c: Partial<Pick<OrbitCamera, "radius" | "azimuth" | "elevation">>) => void; sample: () => { w: number; h: number; mean: number; nonBlack: number; info: ReturnType<Renderer["info"]> } | null };
+    __bh?: { ready: () => boolean; milkyWay: () => boolean; setCamera: (c: Partial<Pick<OrbitCamera, "radius" | "azimuth" | "elevation">>) => void; sample: () => { w: number; h: number; mean: number; nonBlack: number; info: ReturnType<Renderer["info"]> } | null };
   }
 }
 window.__bh = {
   ready: () => !!renderer,
+  milkyWay: () => milkyWayLoaded,
   setCamera: (c) => Object.assign(cam, c),
   sample: () => {
     if (!renderer) return null;

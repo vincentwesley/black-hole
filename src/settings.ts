@@ -10,10 +10,12 @@ export interface Settings {
   doppler: boolean;
   gravity: boolean;
   cruise: boolean;
+  milkyWay: boolean;
   temp: number;
   outer: number;
   exposure: number;
   bloom: number;
+  sky: number;
 }
 
 export const DEFAULTS: Settings = {
@@ -23,10 +25,12 @@ export const DEFAULTS: Settings = {
   doppler: true,
   gravity: true,
   cruise: true,
+  milkyWay: true,
   temp: 5800,
   outer: 12,
   exposure: 0.45,
   bloom: 0.6,
+  sky: 2.5,
 };
 
 /** What each look changes. The film look drops all frequency shifts (James et al. 2015, §4.2). */
@@ -44,8 +48,8 @@ export function sanitize(raw: unknown): Settings {
   const r = raw as Record<string, unknown>;
   if (r.look === "physical" || r.look === "interstellar") out.look = r.look;
   if (isPreset(r.quality)) out.quality = r.quality;
-  for (const k of ["auto", "doppler", "gravity", "cruise"] as const) if (typeof r[k] === "boolean") out[k] = r[k];
-  const num = (k: "temp" | "outer" | "exposure" | "bloom", lo: number, hi: number) => {
+  for (const k of ["auto", "doppler", "gravity", "cruise", "milkyWay"] as const) if (typeof r[k] === "boolean") out[k] = r[k];
+  const num = (k: "temp" | "outer" | "exposure" | "bloom" | "sky", lo: number, hi: number) => {
     const v = r[k];
     if (typeof v === "number" && Number.isFinite(v)) out[k] = Math.min(hi, Math.max(lo, v));
   };
@@ -53,6 +57,7 @@ export function sanitize(raw: unknown): Settings {
   num("outer", 5, 25);
   num("exposure", 0.05, 3);
   num("bloom", 0, 1);
+  num("sky", 0, 5);
   return out;
 }
 

@@ -9,7 +9,7 @@ src/settings.ts       settings, Physical/Film looks, sanitised localStorage
 src/physics/          schwarzschild.ts (geodesics, camera rays, redshift), disk.ts (Novikov–Thorne), color.ts (Planck/CIE)
 src/sky/stars.ts      BSC5 → galactic → world → float cubemap faces
 src/render/           renderer.ts (WebGL2 passes), quality.ts (presets, governor), shaders/*.vert|frag
-scripts/              build-stars.mjs (catalogue → public/data/stars.bin), screenshots.mjs, hero.mjs
+scripts/              build-stars.mjs (catalogue → public/data/stars.bin), build-milkyway.py (NASA EXR → public/data/milkyway.jpg), screenshots.mjs, hero.mjs
 tests/ (Vitest)       physics, stars, settings/quality/camera
 e2e/ (Playwright)     render sanity via pixel read-back, toggles, keys, theme, no-WebGL fallback, axe
 ```
@@ -27,7 +27,7 @@ Render pipeline per frame: scene.frag (geodesics + disk + sky) → RGBA16F → b
 1. **M1 Core renderer** — physics modules + tests, shaders, renderer, page, controls. ✅
 2. **M2 Ship** — e2e + axe, hero/fallback frames, Pages workflow, README, handover. ✅ (see HANDOVER.md)
 3. **M3 Polish (next)** — ideas ranked:
-   1. Milky Way glow from NASA SVS Deep Star Maps (convert EXR → 2k RGBE/half PNG, ≤ 3 MB) behind the BSC stars.
+   1. ✅ Milky Way glow from NASA SVS Deep Star Maps behind the BSC stars (DECISIONS #16).
    2. Temporal accumulation / jittered supersampling when the camera is still (crisper photon ring at no steady-state cost).
    3. Kerr (spinning) hole option following James et al. 2015 (needs the Carter-constant equations; much heavier).
    4. Table-based fast path (Bruneton 2020) for the Low preset on phones.

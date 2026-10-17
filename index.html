@@ -58,6 +58,7 @@
           <label class="check"><input type="checkbox" name="doppler" checked> Doppler beaming</label>
           <label class="check"><input type="checkbox" name="gravity" checked> Gravitational redshift</label>
           <label class="check"><input type="checkbox" name="cruise" checked> Cruise (slow orbit)</label>
+          <label class="check"><input type="checkbox" name="milkyWay" checked> Milky Way</label>
           <label class="range">Disk temperature <output name="o-temp" class="mono">5800 K</output>
             <input type="range" name="temp" min="2500" max="20000" step="100" value="5800"></label>
           <label class="range">Disk outer edge <output name="o-outer" class="mono">12 r<sub>s</sub></output>
@@ -66,6 +67,8 @@
             <input type="range" name="exposure" min="0.05" max="3" step="0.05" value="0.45"></label>
           <label class="range">Bloom <output name="o-bloom" class="mono">0.6</output>
             <input type="range" name="bloom" min="0" max="1" step="0.05" value="0.6"></label>
+          <label class="range">Sky brightness <output name="o-sky" class="mono">2.5×</output>
+            <input type="range" name="sky" min="0" max="5" step="0.1" value="2.5"></label>
           <div class="row">
             <button class="hs-btn" type="button" id="reset">Reset view</button>
             <button class="hs-btn hs-btn--ghost" type="button" id="snap">Save PNG</button>
@@ -92,7 +95,7 @@
           </div>
           <div>
             <h3>Real sky, real colours</h3>
-            <p>The background holds the 9,096 stars of the Yale Bright Star Catalogue, placed by galactic coordinates with the galactic centre behind the hole and coloured from their B−V index. Disk and star colours come from Planck spectra integrated against the CIE 1931 colour matching functions, then bloom and an ACES tone curve finish the frame.</p>
+            <p>The background holds the 9,096 stars of the Yale Bright Star Catalogue, placed by galactic coordinates with the galactic centre behind the hole and coloured from their B−V index, over NASA's Gaia-based map of the Milky Way's diffuse light, scaled to its real surface brightness relative to the stars. Disk and star colours come from Planck spectra integrated against the CIE 1931 colour matching functions, then bloom and an ACES tone curve finish the frame.</p>
           </div>
         </div>
       </section>
@@ -111,6 +114,9 @@
           <li>G. B. Rybicki, A. P. Lightman (1979). <em>Radiative Processes in Astrophysics</em>, §1.4 (invariance of I<sub>ν</sub>/ν³).</li>
           <li>C. Wyman, P.-P. Sloan, P. Shirley (2013). <a href="https://jcgt.org/published/0002/02/01/">Simple analytic approximations to the CIE XYZ color matching functions</a>. JCGT 2(2).</li>
           <li>F. J. Ballesteros (2012). <a href="https://arxiv.org/abs/1201.1809">New insights into black bodies</a>. EPL 97, 34008 (B−V to temperature).</li>
+          <li>NASA/Goddard Space Flight Center Scientific Visualization Studio (2020). <a href="https://svs.gsfc.nasa.gov/4851">Deep Star Maps 2020</a>, Milky Way background in galactic coordinates; Gaia DR2: ESA/Gaia/DPAC.</li>
+          <li>P. C. van der Kruit (2024). <a href="https://arxiv.org/abs/2401.15518">Pannekoek's Galaxy</a>. J. Astron. Hist. Heritage; Table 3 (Milky Way surface brightness, used to calibrate the map).</li>
+          <li>J. P. Snyder (1987). <em>Map Projections: A Working Manual</em>, USGS Professional Paper 1395, §22 (gnomonic area scale, for cube-map texel solid angles).</li>
           <li>D. Hoffleit, W. H. Warren Jr. (1991). <a href="https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50">The Bright Star Catalogue, 5th revised ed.</a> CDS V/50.</li>
           <li>J. Jimenez (2014). <a href="https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare/">Next generation post processing in Call of Duty: Advanced Warfare</a>. SIGGRAPH course (bloom filters).</li>
           <li>K. Narkowicz (2015). <a href="https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/">ACES filmic tone mapping curve</a>.</li>

@@ -40,6 +40,17 @@ test("Doppler toggle and Film look change the frame", async ({ page }) => {
   await expect(page.getByLabel("Gravitational redshift")).not.toBeChecked();
 });
 
+test("Milky Way map loads and adds light to the sky", async ({ page }) => {
+  await open(page, { sky: 5 });
+  await page.waitForFunction(() => window.__bh?.ready() && window.__bh.milkyWay());
+  const panel = page.locator("#panel");
+  if (!(await panel.evaluate((d: HTMLDetailsElement) => d.open))) await panel.locator("summary").click();
+  const withMw = await sample(page);
+  await page.getByLabel("Milky Way").uncheck();
+  const without = await sample(page);
+  expect(withMw.mean).toBeGreaterThan(without.mean + 0.3);
+});
+
 test("zoom keys move the camera and the readout follows", async ({ page }) => {
   await open(page);
   await page.waitForFunction(() => window.__bh?.ready());

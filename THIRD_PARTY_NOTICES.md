@@ -3,6 +3,8 @@
 ## Data
 - **Yale Bright Star Catalogue, 5th rev. ed.** (Hoffleit & Warren 1991, CDS catalogue V/50). Converted to `public/data/stars.bin` by `scripts/build-stars.mjs` (galactic longitude/latitude, V magnitude, B−V only).
 
+- **NASA SVS Deep Star Maps 2020**, Milky Way background in galactic coordinates. Credit: NASA/Goddard Space Flight Center Scientific Visualization Studio; Gaia DR2: ESA/Gaia/DPAC. Converted (downsampled, tone-encoded to sRGB JPEG) to `public/data/milkyway.jpg` by `scripts/build-milkyway.py`.
+
 ## Fonts (`src/fonts/`)
 SIL Open Font License 1.1, full text in `src/fonts/OFL.txt`: Space Grotesk, Inter, Silkscreen, JetBrains Mono.
 

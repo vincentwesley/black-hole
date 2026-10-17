@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { bakeStarFaces, placeStars, dirToFace, faceToDir, galacticToWorld, parseStars, starColor } from "../src/sky/stars";
+import {
+  bakeStarFaces, dirToFace, faceToDir, galacticToUv, galacticToWorld, MILKY_WAY_SCALE, parseStars, placeStars, starColor,
+  texelSolidAngle, worldToGalacticMatrix,
+} from "../src/sky/stars";
 import { normalize, type Vec3 } from "../src/physics/schwarzschild";
 
 describe("cubemap mapping", () => {
@@ -34,12 +37,38 @@ describe("star catalogue", () => {
     expect(cool[0]).toBeGreaterThan(cool[2]);
     expect(0.2126 * hot[0] + 0.7152 * hot[1] + 0.0722 * hot[2]).toBeCloseTo(1, 6);
   });
-  it("conserves total flux when baking (away from face edges)", () => {
+  it("conserves flux when baking, after the solid-angle weight (away from face edges)", () => {
     const one = [{ l: 0.3, b: 0.1, vmag: 0, bv: 0.6 }];
+    const { s, t } = dirToFace(galacticToWorld(0.3, 0.1));
     let sum = 0;
     bakeStarFaces(placeStars(one), 64, (_, f) => {
       for (let i = 1; i < f.length; i += 4) sum += f[i];
     });
-    expect(sum / (64 / 512) ** 2).toBeCloseTo(starColor(one[0])[1], 4);
+    expect((sum * texelSolidAngle(s, t)) / (64 / 512) ** 2).toBeCloseTo(starColor(one[0])[1], 4);
+  });
+});
+
+describe("Milky Way map", () => {
+  it("weights face corners by the texel solid angle 3^-1.5", () => {
+    expect(texelSolidAngle(0.5, 0.5)).toBe(1);
+    expect(texelSolidAngle(0, 1)).toBeCloseTo(3 ** -1.5, 12);
+  });
+  it("puts the Large Magellanic Cloud where the NASA SVS galactic map shows it", () => {
+    // LMC: l = 280.5°, b = -32.9°; in the 1024x512 print it sits near pixel (740, 350).
+    const [u, v] = galacticToUv((280.5 * Math.PI) / 180, (-32.9 * Math.PI) / 180);
+    expect(u * 1024).toBeCloseTo(740, -1);
+    expect(v * 512).toBeCloseTo(350, -1);
+  });
+  it("world -> galactic matrix inverts galacticToWorld", () => {
+    const m = worldToGalacticMatrix();
+    const l = 1.1, b = -0.4;
+    const w = galacticToWorld(l, b);
+    const g = [0, 1, 2].map((r) => m[r] * w[0] + m[3 + r] * w[1] + m[6 + r] * w[2]);
+    expect(Math.atan2(g[1], g[0])).toBeCloseTo(l, 6);
+    expect(Math.asin(g[2])).toBeCloseTo(b, 6);
+  });
+  it("calibrates texture value 1 to ~20.5 mag/arcsec² in star units", () => {
+    expect(MILKY_WAY_SCALE).toBeGreaterThan(0.003);
+    expect(MILKY_WAY_SCALE).toBeLessThan(0.005);
   });
 });
