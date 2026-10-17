@@ -35,7 +35,7 @@ Vincent Wesley (GitHub: vincentwesley).
 
 ## Git
 - Commits only as `vincentwesley <221810966+vincentwesley@users.noreply.github.com>`. Never a real email, never the retired Pincenw account.
-- Work on a `claude/...` branch and open a PR. Repos stay private; never change visibility.
+- Work on a `claude/...` branch and open a PR. Repos stay private; never change visibility. Exception: this repo was made public by the owner on 2026-10-17 for GitHub Pages; keep it that way.
 
 ## House style (every UI)
 - Dark by default, even with no JS and the OS set to light (bg `#11150e`, accent `#4fe0a0`). Mint light theme only via toggle (`data-theme="light"`). Secondary accents: peach `#e9a07f`, lavender `#a996e0`.
