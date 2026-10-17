@@ -1,0 +1,41 @@
+{
+  "name": "black-hole",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Real-time Schwarzschild black hole in WebGL2: per-pixel ray-traced lensing, photon ring, Doppler-beamed accretion disk.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Vincent Wesley",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vincentwesley/black-hole.git"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "knip": "knip",
+    "stars": "node scripts/build-stars.mjs",
+    "shots": "node scripts/screenshots.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.12.0",
+    "knip": "^6.41.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  },
+  "homepage": "https://vincentwesley.github.io/black-hole/"
+}

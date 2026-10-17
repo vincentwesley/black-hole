@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="description" content="A real-time Schwarzschild black hole in your browser: light rays traced per pixel bend into the photon ring and the warped image of a Doppler-beamed accretion disk.">
+  <meta name="theme-color" content="#11150e">
+  <meta property="og:title" content="Black Hole">
+  <meta property="og:description" content="Real-time gravitational lensing, traced per pixel in WebGL2.">
+  <meta property="og:image" content="og.jpg">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <title>Black Hole</title>
+</head>
+<body>
+  <a class="skip" href="#about">Skip to how it works</a>
+  <main>
+    <section class="stage" aria-labelledby="h-title">
+      <canvas id="view" tabindex="0" role="img" aria-label="Rendered black hole. Drag or use the arrow keys to orbit, scroll, pinch or use plus and minus to zoom."></canvas>
+      <div class="fallback" id="fallback" hidden>
+        <img src="fallback.jpg" alt="" width="1280" height="720">
+        <p id="fallback-msg">This browser could not start WebGL2, so here is a still frame instead.</p>
+      </div>
+
+      <header class="hud hud--top">
+        <div>
+          <p class="hs-eyebrow">3D-18 · Schwarzschild ray tracer</p>
+          <h1 id="h-title">Black Hole</h1>
+        </div>
+        <button id="theme" class="hs-btn hs-btn--ghost" type="button" aria-pressed="false">Light theme</button>
+      </header>
+
+      <p class="hud hud--stats mono" id="stats" aria-live="off">
+        <span><b id="s-r">18.0</b> r<sub>s</sub></span>
+        <span><b id="s-fps">--</b> fps</span>
+        <span id="s-q">High</span>
+      </p>
+
+      <p class="hud hud--hint" id="hint">Drag to orbit · scroll or pinch to zoom</p>
+
+      <details class="panel hs-card" id="panel" open>
+        <summary><span class="hs-chip">Controls</span></summary>
+        <form id="controls" class="controls">
+          <fieldset class="seg">
+            <legend>Look</legend>
+            <label><input type="radio" name="look" value="physical" checked> Physical</label>
+            <label><input type="radio" name="look" value="interstellar"> Film</label>
+          </fieldset>
+          <fieldset class="seg">
+            <legend>Quality</legend>
+            <label><input type="radio" name="quality" value="low"> Low</label>
+            <label><input type="radio" name="quality" value="medium"> Med</label>
+            <label><input type="radio" name="quality" value="high" checked> High</label>
+            <label><input type="radio" name="quality" value="ultra"> Ultra</label>
+          </fieldset>
+          <label class="check"><input type="checkbox" name="auto" checked> Auto-lower quality when slow</label>
+          <label class="check"><input type="checkbox" name="doppler" checked> Doppler beaming</label>
+          <label class="check"><input type="checkbox" name="gravity" checked> Gravitational redshift</label>
+          <label class="check"><input type="checkbox" name="cruise" checked> Cruise (slow orbit)</label>
+          <label class="range">Disk temperature <output name="o-temp" class="mono">5800 K</output>
+            <input type="range" name="temp" min="2500" max="20000" step="100" value="5800"></label>
+          <label class="range">Disk outer edge <output name="o-outer" class="mono">12 r<sub>s</sub></output>
+            <input type="range" name="outer" min="5" max="25" step="0.5" value="12"></label>
+          <label class="range">Exposure <output name="o-exp" class="mono">0.45</output>
+            <input type="range" name="exposure" min="0.05" max="3" step="0.05" value="0.45"></label>
+          <label class="range">Bloom <output name="o-bloom" class="mono">0.6</output>
+            <input type="range" name="bloom" min="0" max="1" step="0.05" value="0.6"></label>
+          <div class="row">
+            <button class="hs-btn" type="button" id="reset">Reset view</button>
+            <button class="hs-btn hs-btn--ghost" type="button" id="snap">Save PNG</button>
+          </div>
+        </form>
+      </details>
+    </section>
+    <div class="page">
+      <section class="hs-card about" id="about" aria-labelledby="h-about" tabindex="-1">
+        <p class="hs-eyebrow">How it works</p>
+        <h2 id="h-about">Every pixel follows a ray of light</h2>
+        <div class="cols">
+          <div>
+            <h3>Bent light</h3>
+            <p>For each pixel the shader sends a light ray backwards from the camera and integrates its path through the Schwarzschild geometry. In units where the Schwarzschild radius r<sub>s</sub> = 1 the orbit obeys <code>u″ + u = 3⁄2 u²</code> with <code>u = 1/r</code>; written as a 3D acceleration <code>x″ = −3⁄2 h² x / r⁵</code>, a leapfrog step works directly in Cartesian space. Rays with impact parameter below <code>3√3⁄2 r<sub>s</sub></code> fall in; those just above circle the photon sphere at 1.5 r<sub>s</sub> and draw the thin photon ring.</p>
+          </div>
+          <div>
+            <h3>The disk</h3>
+            <p>A thin disk runs from the innermost stable orbit (3 r<sub>s</sub>) outward. Its temperature follows the Novikov–Thorne flux of Page &amp; Thorne, which vanishes at the inner edge and peaks near 4.8 r<sub>s</sub>. Each time a ray crosses the disk plane the shader adds the gas's emission, so the far side of the disk appears lifted over the top and under the bottom of the shadow.</p>
+          </div>
+          <div>
+            <h3>Doppler beaming</h3>
+            <p>Gas orbits at the Keplerian rate. A ray's frequency ratio <code>g = √(1 − 3M/r) / (1 − Ωλ)</code> combines gravitational redshift, time dilation and the Doppler shift. Because <code>I<sub>ν</sub>/ν³</code> is conserved, a blackbody at temperature T is seen as a blackbody at gT, so the approaching side turns brighter and bluer while the receding side dims and reddens. The <em>Film</em> look switches these shifts off, as the makers of Interstellar did.</p>
+          </div>
+          <div>
+            <h3>Real sky, real colours</h3>
+            <p>The background holds the 9,096 stars of the Yale Bright Star Catalogue, placed by galactic coordinates with the galactic centre behind the hole and coloured from their B−V index. Disk and star colours come from Planck spectra integrated against the CIE 1931 colour matching functions, then bloom and an ACES tone curve finish the frame.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="hs-card refs" aria-labelledby="h-refs">
+        <p class="hs-eyebrow">Sources</p>
+        <h2 id="h-refs">References</h2>
+        <ol>
+          <li>O. James, E. von Tunzelmann, P. Franklin, K. S. Thorne (2015). <a href="https://arxiv.org/abs/1502.03808">Gravitational lensing by spinning black holes in astrophysics, and in the movie Interstellar</a>. Class. Quantum Grav. 32, 065001.</li>
+          <li>J.-P. Luminet (1979). <a href="https://ui.adsabs.harvard.edu/abs/1979A%26A....75..228L">Image of a spherical black hole with thin accretion disk</a>. Astron. Astrophys. 75, 228.</li>
+          <li>D. N. Page, K. S. Thorne (1974). <a href="https://ui.adsabs.harvard.edu/abs/1974ApJ...191..499P">Disk-accretion onto a black hole. Time-averaged structure of accretion disk</a>. ApJ 191, 499.</li>
+          <li>I. D. Novikov, K. S. Thorne (1973). Astrophysics of black holes. In <em>Black Holes (Les Astres Occlus)</em>, Gordon &amp; Breach.</li>
+          <li>S. Chandrasekhar (1983). <em>The Mathematical Theory of Black Holes</em>, ch. 3. Oxford University Press.</li>
+          <li>R. Antonelli. <a href="https://rantonels.github.io/starless/">Starless: a Schwarzschild ray tracer</a> (Cartesian form of the geodesic equation).</li>
+          <li>E. Bruneton (2020). <a href="https://arxiv.org/abs/2010.08735">Real-time high-quality rendering of non-rotating black holes</a>. arXiv:2010.08735.</li>
+          <li>G. B. Rybicki, A. P. Lightman (1979). <em>Radiative Processes in Astrophysics</em>, §1.4 (invariance of I<sub>ν</sub>/ν³).</li>
+          <li>C. Wyman, P.-P. Sloan, P. Shirley (2013). <a href="https://jcgt.org/published/0002/02/01/">Simple analytic approximations to the CIE XYZ color matching functions</a>. JCGT 2(2).</li>
+          <li>F. J. Ballesteros (2012). <a href="https://arxiv.org/abs/1201.1809">New insights into black bodies</a>. EPL 97, 34008 (B−V to temperature).</li>
+          <li>D. Hoffleit, W. H. Warren Jr. (1991). <a href="https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50">The Bright Star Catalogue, 5th revised ed.</a> CDS V/50.</li>
+          <li>J. Jimenez (2014). <a href="https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare/">Next generation post processing in Call of Duty: Advanced Warfare</a>. SIGGRAPH course (bloom filters).</li>
+          <li>K. Narkowicz (2015). <a href="https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/">ACES filmic tone mapping curve</a>.</li>
+        </ol>
+      </section>
+
+      <section class="hs-card keys" aria-labelledby="h-keys">
+        <p class="hs-eyebrow">Controls</p>
+        <h2 id="h-keys">Fly around</h2>
+        <dl class="keylist">
+          <dt>Drag, or arrow keys / WASD</dt><dd>Orbit</dd>
+          <dt>Scroll, pinch, or + / −</dt><dd>Zoom between 2.2 and 60 r<sub>s</sub></dd>
+          <dt>Space</dt><dd>Cruise on or off</dd>
+          <dt>R</dt><dd>Reset view</dd>
+        </dl>
+      </section>
+    </div>
+  </main>
+  <footer>
+<section class="section span-12 creator" aria-labelledby="h-creator">
+  <div class="card">
+    <div class="card__head"><h2 id="h-creator">Credits</h2></div>
+    <div class="card__body creator__body">
+      <div class="creator__fx" aria-hidden="true">
+        <i style="--x:30%;--y:22%;--s:3px;--d:11.7s;--b:3.1s;--dx:-34px;--dy:-36px;--delay:-9.6s"></i>
+        <i style="--x:38%;--y:62%;--s:2px;--d:8.2s;--b:2.3s;--dx:24px;--dy:-18px;--delay:-0.3s"></i>
+        <i style="--x:47%;--y:18%;--s:4px;--d:8.5s;--b:2.8s;--dx:30px;--dy:9px;--delay:-0.5s"></i>
+        <i style="--x:55%;--y:70%;--s:4px;--d:6.7s;--b:2.7s;--dx:40px;--dy:-38px;--delay:-3.9s"></i>
+        <i style="--x:62%;--y:30%;--s:4px;--d:6.3s;--b:2.7s;--dx:31px;--dy:-28px;--delay:-1.8s"></i>
+        <i style="--x:70%;--y:55%;--s:3px;--d:9.2s;--b:3.5s;--dx:31px;--dy:-22px;--delay:-0.9s"></i>
+        <i style="--x:78%;--y:24%;--s:4px;--d:9.8s;--b:3.1s;--dx:30px;--dy:-37px;--delay:-5.5s"></i>
+        <i style="--x:86%;--y:64%;--s:4px;--d:7.2s;--b:3.8s;--dx:14px;--dy:-5px;--delay:-3.4s"></i>
+        <i style="--x:93%;--y:38%;--s:4px;--d:8.2s;--b:2.8s;--dx:-17px;--dy:-14px;--delay:-0.7s"></i>
+        <i style="--x:44%;--y:84%;--s:3px;--d:9.2s;--b:4.2s;--dx:17px;--dy:-9px;--delay:-5.6s"></i>
+        <i style="--x:66%;--y:86%;--s:2px;--d:6.7s;--b:3.2s;--dx:3px;--dy:-26px;--delay:-6.3s"></i>
+        <i style="--x:25%;--y:74%;--s:4px;--d:6.2s;--b:3.7s;--dx:31px;--dy:-5px;--delay:-2.1s"></i>
+        <i style="--x:6%;--y:30%;--s:3px;--d:9.6s;--b:3.5s;--dx:18px;--dy:-37px;--delay:-8.1s"></i>
+        <i style="--x:14%;--y:82%;--s:3px;--d:8.8s;--b:3.7s;--dx:-33px;--dy:-6px;--delay:-5.7s"></i>
+        <i style="--x:21%;--y:12%;--s:5px;--d:10.9s;--b:2.9s;--dx:9px;--dy:-1px;--delay:-0.2s"></i>
+        <i style="--x:52%;--y:44%;--s:4px;--d:8.1s;--b:3.6s;--dx:23px;--dy:-38px;--delay:-1.8s"></i>
+        <b class="spark" style="--x:34%;--y:30%;--t:3.2s"></b><b class="spark" style="--x:58%;--y:22%;--t:4.1s;--delay:-1.3s"></b><b class="spark spark--sm" style="--x:50%;--y:58%;--t:2.7s;--delay:-.8s"></b><b class="spark spark--sm" style="--x:9%;--y:16%;--t:3.6s;--delay:-2s"></b>
+      </div>
+      <div class="creator__art" aria-hidden="true">
+        <img src="creator.webp" alt="" width="456" height="613" loading="lazy" decoding="async">
+      </div>
+      <div class="creator__text">
+        <p class="creator__eyebrow">Made by</p>
+        <p class="creator__name"><span>Vin</span></p>
+        <p class="creator__blurb">Black Hole was designed and built by Vin. Find more of my work on my website, or say hi on Instagram and X.</p>
+        <ul class="creator__links">
+          <li><a href="https://vwesley.dev" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>
+            <span>vwesley.dev</span></a></li>
+          <li><a href="https://www.instagram.com/vinnql/" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1" class="fill"/></svg>
+            <span>@vinnql</span><span class="sr-only"> on Instagram</span></a></li>
+          <li><a href="https://x.com/Vin_Koe" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="fill" d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8L17.8 3zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5z"/></svg>
+            <span>@Vin_Koe</span><span class="sr-only"> on X (Twitter)</span></a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+  </footer>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
