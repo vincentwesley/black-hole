@@ -1,13 +1,17 @@
-# CLAUDE.md (Vincent Wesley, cloud sessions)
+# CLAUDE.md — Black Hole (3D-18)
 
-## First run (only while `vite-ts/`, `mv3-extension/` and `worker-proxy/` still exist at the repo root)
-This repo is a template of three starters. When I give you a project name and description, do this before anything else, without asking:
-1. Pick the starter that fits (vite-ts = web app, mv3-extension = Chrome extension, worker-proxy = API proxy Worker). Default to vite-ts.
-2. Move that starter's contents to the repo root, delete the other two starter folders and the monorepo README/CI, and keep `.claude/` and `.github/workflows/automerge.yml` (it merges `claude/*` PRs once CI passes; never delete it or rename the CI workflow, which must stay named `CI`).
-3. Merge the starter's CLAUDE.md into this file, then delete this whole "First run" section.
-4. Replace `{{PROJECT}}` and the `package.json` name/repository with the project name. Make `.github/workflows/ci.yml` run at the repo root (no `working-directory`), and add `.claude` to the ESLint ignores.
-5. Build the MVP from my description. If I gave no must-haves, keep it to the smallest useful version.
-6. Run typecheck + lint + test + build, update `docs/next-session.md`, commit, open a PR, and report in 2 lines.
+Real-time Schwarzschild black hole in raw WebGL2: per-pixel geodesic ray tracing, photon ring, Novikov–Thorne disk with Doppler beaming, bloom. Deployed to GitHub Pages. Read `docs/HANDOVER.md` and `docs/next-session.md` first; architecture in `docs/PLAN.md`, reasons in `docs/DECISIONS.md`, sources in `docs/RESEARCH.md`.
+
+## Project rules
+- Checks that must stay green: `npm run typecheck && npm run lint && npm test && npm run build && npm run test:e2e` (in this container prefix e2e with `PW_CHROMIUM=/opt/pw-browsers/chromium`).
+- `src/render/shaders/scene.frag` mirrors `traceRay()` in `src/physics/schwarzschild.ts`. Change both together and keep the physics tests passing.
+- Units: Schwarzschild radius r_s = 1 everywhere (M = 1/2). Disk plane is y = 0, rotation about +y.
+- Physics must stay cited: any new formula gets a reference in the app's References list and `docs/RESEARCH.md`.
+- Shipped data is real: stars come from BSC5 via `scripts/build-stars.mjs`. The disk turbulence is the one artistic element (see DECISIONS #7).
+- GitHub Pages cannot set headers: the CSP lives in the `<meta http-equiv>` in `index.html`. No third-party hosts, no inline scripts.
+- The render stays dark in both themes; the theme toggle only changes the page chrome.
+- Screenshots: `npm run build && npx vite preview --port 4173` then `PW_CHROMIUM=/opt/pw-browsers/chromium node scripts/screenshots.mjs http://127.0.0.1:4173/ qa-output` (gitignored). `scripts/hero.mjs` regenerates `public/fallback.jpg`, `public/og.jpg` and `docs/img/*` (slow on SwiftShader: run in the background).
+
 
 ## Who
 Vincent Wesley (GitHub: vincentwesley).
@@ -21,7 +25,7 @@ Vincent Wesley (GitHub: vincentwesley).
 - Prefer free, licensed assets over from-scratch builds for complex visuals. Never AI-generated art, never stock figures.
 - Titles only, no descriptive captions on personal content. Never replace PLACEHOLDER content with invented facts; flag it.
 - Never blanket-revert (`git checkout --` / `reset --hard`) without checking for my uncommitted work.
-- Keep `docs/next-session.md` (Before anything / How to work here / Current state / Known gaps). Read it first, update it before the session ends, keep it lean.
+- Keep `docs/next-session.md` (Before anything / How to work here / Current state / Known gaps) and `docs/HANDOVER.md`. Read them first, update them after each milestone, keep them lean.
 
 ## GitHub Actions minutes are limited
 - Verify locally (typecheck, lint, unit tests, build) before pushing. Never use CI as your test runner.
@@ -40,7 +44,7 @@ Vincent Wesley (GitHub: vincentwesley).
 - Every UI ends with the starter's credits card; replace `{{PROJECT}}` with the project name.
 
 ## Stack
-npm, Node 24 (`.nvmrc`), install with `npm ci --ignore-scripts`. Vitest, Playwright, @axe-core/playwright. Cloudflare Pages/Workers with a strict CSP in `public/_headers`. GitHub Actions CI. Free tiers only, no third-party runtime hosts.
+npm, Node 24 (`.nvmrc`), install with `npm ci --ignore-scripts`. Vitest, Playwright, @axe-core/playwright. GitHub Pages for this repo (strict CSP in a meta tag); Cloudflare Pages/Workers elsewhere. GitHub Actions CI. Free tiers only, no third-party runtime hosts.
 
 ## Done means
 Typecheck, lint, unit and e2e pass; axe clean; works at 375px and desktop in dark and light; credits card present.
