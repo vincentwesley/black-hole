@@ -1,8 +1,14 @@
 # Black Hole
 
+[![CI](https://github.com/vincentwesley/black-hole/actions/workflows/ci.yml/badge.svg)](https://github.com/vincentwesley/black-hole/actions/workflows/ci.yml)
+[![Deploy](https://github.com/vincentwesley/black-hole/actions/workflows/deploy.yml/badge.svg)](https://github.com/vincentwesley/black-hole/actions/workflows/deploy.yml)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-4fe0a0)](LICENSE)
+
 A real-time black hole you can fly around, in a browser tab. Every pixel traces a ray of light backwards through the curved spacetime of a Schwarzschild black hole, so the photon ring, the shadow and the warped image of the accretion disk behind it all come out of the maths, not a texture. The near side of the disk is brightened and blued by Doppler beaming.
 
-**Live:** https://vincentwesley.github.io/black-hole/ (after GitHub Pages is switched on, see below)
+### ▶ [Open it in your browser](https://vincentwesley.github.io/black-hole/)
+
+Needs WebGL2 (any current desktop or phone browser). Drag to orbit, scroll or pinch to zoom.
 
 ![Physical look](docs/img/physical.jpg)
 
@@ -34,7 +40,7 @@ Node 24 (`.nvmrc`). Regenerate the data files:
 - Milky Way: `python3 -I scripts/build-milkyway.py milkyway_2020_4k_gal.exr public/data/milkyway.jpg` (needs numpy + Pillow; EXR from [NASA SVS 4851](https://svs.gsfc.nasa.gov/4851))
 
 ## Deploy
-`.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages whenever `main` changes (including automerged PRs). One-time: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+`.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages whenever `main` changes (automerged PRs dispatch it from `automerge.yml`). Pages source: **GitHub Actions**.
 
 ## Secrets and network
 None. No API keys, no analytics, no third-party hosts. The page fetches only its own files (`data/stars.bin`, `data/milkyway.jpg`, fonts, images). `localStorage` keeps the theme and your control settings. The Content-Security-Policy is a `<meta>` tag in `index.html` because GitHub Pages cannot send headers.

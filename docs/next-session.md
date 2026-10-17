@@ -12,7 +12,7 @@ Continue work on **Black Hole (3D-18)** (repo `vincentwesley/black-hole`, deploy
 - Shader `scene.frag` mirrors `traceRay()` in `src/physics/schwarzschild.ts`; change both.
 
 ## Current state
-- MVP merged (PR #1). M3a (Milky Way, sky fixes, deploy trigger) on `claude/sharp-cerf-1qllnk`. Pages needs the one-time Settings step in HANDOVER.md.
+- MVP + M3a merged and live at https://vincentwesley.github.io/black-hole/. Repo is public (owner's choice, 2026-10-17).
 
 ## Known gaps
 1. See HANDOVER.md "Known issues" and "Next".

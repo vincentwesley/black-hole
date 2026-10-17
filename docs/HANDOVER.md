@@ -1,6 +1,6 @@
 # Handover
 
-_Last updated: 2026-10-17, milestone 3a. PR #1 (MVP) is merged into `main`. Branch `claude/sharp-cerf-1qllnk` was restarted from `main` for M3 (Milky Way, sky fixes, deploy trigger fix) and goes out as a new PR._
+_Last updated: 2026-10-17. PRs #1 (MVP) and #2 (M3a) merged; site live on GitHub Pages; repo public._
 
 ## Done
 - **M1 core renderer:** Schwarzschild geodesics per pixel (WebGL2), Novikov–Thorne disk with Doppler + gravitational shifts, Physical/Film looks, BSC5 star cubemap, bloom + ACES, orbit camera (mouse/touch/keys), quality presets + governor, settings persistence, PNG snapshot, no-WebGL2 still-frame fallback.
@@ -9,8 +9,8 @@ _Last updated: 2026-10-17, milestone 3a. PR #1 (MVP) is merged into `main`. Bran
 - **M3a:** NASA SVS Milky Way glow (galactic centre lensed into an Einstein ring), Sky brightness slider + Milky Way toggle, cubemap solid-angle fix (stars no longer dim toward face corners), Deploy now also runs after automerge.
 
 ## One-time steps for Vincent
-1. **Turn on GitHub Pages:** repo Settings → Pages → Build and deployment → Source: **GitHub Actions**. Then publish once from Actions → Deploy → **Run workflow** (the MVP merge did not deploy: automerge's token cannot start other workflows, fixed in M3: automerge now dispatches Deploy). Site: https://vincentwesley.github.io/black-hole/
-2. Private repo + Pages needs a paid plan (GitHub Pro/Team). If the repo stays private on a free plan, Pages will refuse to deploy; making it public is your call (house rule says repos stay private, so I did not change visibility).
+All done (2026-10-17): repo made public, Pages source set to GitHub Actions, first deploy run. Live at https://vincentwesley.github.io/black-hole/.
+Optional, sidebar only (no API access from sessions): repo description, website, topics and social preview image (`public/og.jpg`).
 
 ## Next (ranked, see PLAN.md M3)
 1. Temporal accumulation when the camera is still (crisper photon ring and stars).
@@ -24,7 +24,7 @@ _Last updated: 2026-10-17, milestone 3a. PR #1 (MVP) is merged into `main`. Bran
 - The disk turbulence is artistic (DECISIONS #7); the brightness/colour profile is physical.
 - Headless SwiftShader runs at ~10–14 fps, so e2e uses the Low preset; real GPUs should hold 60 fps on High (not measured on hardware in this session).
 
-- Verify after the first automerge of M3 that Automerge dispatched one Deploy run (Actions tab). If Pages is still off, that run fails fast at configure-pages.
+- Automerge → Deploy dispatch is untested until the next automerged PR: check the Actions tab shows a Deploy run right after the merge.
 
 ## How to resume
 `npm ci --ignore-scripts`, then the checks in CLAUDE.md. Screenshots: see CLAUDE.md "Project rules".
