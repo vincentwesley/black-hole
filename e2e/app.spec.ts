@@ -61,6 +61,38 @@ test("zoom keys move the camera and the readout follows", async ({ page }) => {
   await expect(page.locator("#s-r")).not.toHaveText("18.0");
 });
 
+test("plain wheel over the render scrolls the page instead of zooming", async ({ page }) => {
+  await open(page);
+  await page.waitForFunction(() => window.__bh?.ready());
+  const box = (await page.locator("#view").boundingBox())!;
+  await page.mouse.move(box.x + box.width / 3, box.y + box.height / 2);
+  await page.mouse.wheel(0, 900);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
+  expect(await page.evaluate(() => window.__bh!.radius())).toBe(18);
+});
+
+test("Ctrl + wheel zooms the camera and keeps the page still", async ({ page }) => {
+  await open(page);
+  await page.waitForFunction(() => window.__bh?.ready());
+  const box = (await page.locator("#view").boundingBox())!;
+  await page.mouse.move(box.x + box.width / 3, box.y + box.height / 2);
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0, 400);
+  await page.keyboard.up("Control");
+  await expect.poll(() => page.evaluate(() => window.__bh!.radius())).toBeGreaterThan(18);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
+test("zoom buttons and the Credits link work", async ({ page }) => {
+  await open(page);
+  await page.waitForFunction(() => window.__bh?.ready());
+  await page.getByRole("button", { name: "Zoom in" }).click();
+  await expect.poll(() => page.evaluate(() => window.__bh!.radius())).toBeLessThan(17);
+  await page.getByRole("link", { name: "Credits" }).click();
+  await expect(page.locator("#credits")).toBeInViewport();
+  await expect(page.getByText("Made by")).toBeVisible();
+});
+
 test("theme toggle switches the page chrome to light", async ({ page }) => {
   await open(page);
   await page.getByRole("button", { name: "Light theme" }).click();

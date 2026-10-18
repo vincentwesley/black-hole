@@ -13,6 +13,7 @@ Continue work on **Black Hole (3D-18)** (repo `vincentwesley/black-hole`, deploy
 
 ## Current state
 - MVP + M3a merged and live at https://vincentwesley.github.io/black-hole/. Repo is public (owner's choice, 2026-10-17).
+- Input model (DECISIONS #20): plain wheel scrolls the page; Ctrl/⌘ + wheel, trackpad pinch, +/− buttons and keys zoom; touch: sideways drag orbits, two fingers tilt/zoom.
 
 ## Known gaps
 1. See HANDOVER.md "Known issues" and "Next".

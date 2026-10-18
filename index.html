@@ -17,7 +17,7 @@
   <a class="skip" href="#about">Skip to how it works</a>
   <main>
     <section class="stage" aria-labelledby="h-title">
-      <canvas id="view" tabindex="0" role="img" aria-label="Rendered black hole. Drag or use the arrow keys to orbit, scroll, pinch or use plus and minus to zoom."></canvas>
+      <canvas id="view" tabindex="0" role="img" aria-label="Rendered black hole. Drag or use the arrow keys to orbit; pinch, Ctrl plus scroll, the zoom buttons or plus and minus keys to zoom."></canvas>
       <div class="fallback" id="fallback" hidden>
         <img src="fallback.jpg" alt="" width="1280" height="720">
         <p id="fallback-msg">This browser could not start WebGL2, so here is a still frame instead.</p>
@@ -29,6 +29,11 @@
           <h1 id="h-title">Black Hole</h1>
         </div>
         <button id="theme" class="hs-btn hs-btn--ghost" type="button" aria-pressed="false">Light theme</button>
+        <nav class="jump" aria-label="Page sections">
+          <a href="#about">How it works</a>
+          <a href="#refs">Sources</a>
+          <a href="#credits">Credits</a>
+        </nav>
       </header>
 
       <p class="hud hud--stats mono" id="stats" aria-live="off">
@@ -37,7 +42,17 @@
         <span id="s-q">High</span>
       </p>
 
-      <p class="hud hud--hint" id="hint">Drag to orbit · scroll or pinch to zoom</p>
+      <div class="hud hud--zoom" role="group" aria-label="Zoom">
+        <button class="hs-btn hs-btn--ghost zbtn" type="button" id="zoom-in" aria-label="Zoom in">+</button>
+        <button class="hs-btn hs-btn--ghost zbtn" type="button" id="zoom-out" aria-label="Zoom out">−</button>
+      </div>
+
+      <p class="hud hud--toast" id="toast" role="status" hidden></p>
+
+      <div class="hud hud--bottom">
+        <p class="hint" id="hint">Drag to orbit · pinch or Ctrl + scroll to zoom</p>
+        <a class="hs-btn scroll-cue" href="#about">More below<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 6l5 5 5-5"/></svg></a>
+      </div>
 
       <details class="panel hs-card" id="panel" open>
         <summary><span class="hs-chip">Controls</span></summary>
@@ -100,7 +115,7 @@
         </div>
       </section>
 
-      <section class="hs-card refs" aria-labelledby="h-refs">
+      <section class="hs-card refs" id="refs" aria-labelledby="h-refs" tabindex="-1">
         <p class="hs-eyebrow">Sources</p>
         <h2 id="h-refs">References</h2>
         <ol>
@@ -128,7 +143,8 @@
         <h2 id="h-keys">Fly around</h2>
         <dl class="keylist">
           <dt>Drag, or arrow keys / WASD</dt><dd>Orbit</dd>
-          <dt>Scroll, pinch, or + / −</dt><dd>Zoom between 2.2 and 60 r<sub>s</sub></dd>
+          <dt>Pinch, Ctrl/⌘ + scroll, + / − or the zoom buttons</dt><dd>Zoom between 2.2 and 60 r<sub>s</sub></dd>
+          <dt>Two fingers (touch)</dt><dd>Tilt and zoom; one finger swipes sideways to orbit and up or down to scroll the page</dd>
           <dt>Space</dt><dd>Cruise on or off</dd>
           <dt>R</dt><dd>Reset view</dd>
         </dl>
@@ -136,7 +152,7 @@
     </div>
   </main>
   <footer>
-<section class="section span-12 creator" aria-labelledby="h-creator">
+<section class="section span-12 creator" id="credits" aria-labelledby="h-creator" tabindex="-1">
   <div class="card">
     <div class="card__head"><h2 id="h-creator">Credits</h2></div>
     <div class="card__body creator__body">
