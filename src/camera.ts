@@ -46,7 +46,7 @@ export class OrbitCamera implements CameraState {
   }
 
   zoomVelocity(v: number): void {
-    this.vR += v;
+    this.vR = clamp(this.vR + v, -3, 3); // repeated clicks can't stack into a runaway zoom
   }
 
   update(dt: number, cruise: boolean): void {

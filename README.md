@@ -8,7 +8,7 @@ A real-time black hole you can fly around, in a browser tab. Every pixel traces 
 
 ### ▶ [Open it in your browser](https://vincentwesley.github.io/black-hole/)
 
-Needs WebGL2 (any current desktop or phone browser). Drag to orbit, scroll or pinch to zoom.
+Needs WebGL2 (any current desktop or phone browser). Drag to orbit; pinch, Ctrl/⌘ + scroll or the +/− buttons to zoom. Plain scrolling moves down the page.
 
 ![Physical look](docs/img/physical.jpg)
 
@@ -23,7 +23,7 @@ Needs WebGL2 (any current desktop or phone browser). Drag to orbit, scroll or pi
 - **Real sky**: the 9,096 stars of the Yale Bright Star Catalogue in galactic coordinates over NASA's Gaia-based Milky Way map, with the galactic centre lensed into an Einstein ring behind the hole.
 - **Bloom** (Jimenez 2014) and **ACES** tone mapping on half-float targets.
 - **Quality presets** (Low/Medium/High/Ultra) plus an automatic step-down when frames get slow. Runs on software GL (SwiftShader) in headless browsers.
-- Mouse, touch (drag, pinch) and keyboard (arrows/WASD, +/−, Space, R). PNG snapshot.
+- Mouse, touch and keyboard: drag to orbit, pinch / Ctrl+scroll / +− buttons to zoom, two-finger tilt on touch, arrows/WASD, +/−, Space, R. The render never traps page scrolling. PNG snapshot.
 
 The maths and every source are on the page under *How it works* and *References*, and in [`docs/RESEARCH.md`](docs/RESEARCH.md).
 

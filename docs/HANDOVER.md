@@ -1,12 +1,14 @@
 # Handover
 
-_Last updated: 2026-10-17. PRs #1 (MVP) and #2 (M3a) merged; site live on GitHub Pages; repo public._
+_Last updated: 2026-10-18. PRs #1–#3 merged; site live on GitHub Pages; repo public. UX pass (scroll no longer trapped) in a new PR._
 
 ## Done
 - **M1 core renderer:** Schwarzschild geodesics per pixel (WebGL2), Novikov–Thorne disk with Doppler + gravitational shifts, Physical/Film looks, BSC5 star cubemap, bloom + ACES, orbit camera (mouse/touch/keys), quality presets + governor, settings persistence, PNG snapshot, no-WebGL2 still-frame fallback.
 - **M2 ship:** Vitest physics/sky/settings tests, Playwright e2e (pixel read-back, toggles, keys, theme, fallback) + axe in dark and light at desktop and 375 px, README with screenshots, `CREDITS.md`, Pages deploy workflow, research/decision/plan docs.
 
 - **M3a:** NASA SVS Milky Way glow (galactic centre lensed into an Einstein ring), Sky brightness slider + Milky Way toggle, cubemap solid-angle fix (stars no longer dim toward face corners), Deploy now also runs after automerge.
+
+- **UX pass:** page scroll no longer trapped by the render (cooperative gestures), jump links to How it works / Sources / Credits, +/− zoom buttons, "More below" cue (DECISIONS #20).
 
 ## One-time steps for Vincent
 All done (2026-10-17): repo made public, Pages source set to GitHub Actions, first deploy run. Live at https://vincentwesley.github.io/black-hole/.

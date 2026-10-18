@@ -3,6 +3,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html { background: var(--bg); }
+[id] { scroll-margin-top: 1rem; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 1rem/1.55 var(--font-body); }
 h1, h2, h3 { font-family: var(--font-head); margin: 0 0 0.5rem; line-height: 1.15; }
 a { color: var(--accent); }
@@ -13,17 +14,18 @@ sub { line-height: 0; }
 .skip { position: absolute; left: 0.5rem; top: -4rem; z-index: 20; padding: 0.5rem 0.75rem; background: var(--accent); color: var(--accent-fg); }
 .skip:focus { top: 0.5rem; }
 
-/* ---- stage: the render fills the first screen and stays dark in both themes ---- */
+/* ---- stage: the render fills the first screen and stays dark in both themes ----
+   It stops a little short of the fold so the next card peeks in and signals more page below. */
 .stage {
   position: relative;
-  height: 100vh;
-  height: 100svh;
+  height: calc(100vh - 2.5rem);
+  height: calc(100svh - 2.5rem);
   min-height: 420px;
   overflow: hidden;
   background: #000;
   isolation: isolate;
 }
-#view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; outline-offset: -4px; }
+#view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: grab; outline-offset: -4px; }
 #view:active { cursor: grabbing; }
 #view[hidden], .hud[hidden] { display: none; }
 #view:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
@@ -36,9 +38,10 @@ sub { line-height: 0; }
 .hud { position: absolute; z-index: 2; margin: 0; color: #e9f0df; text-shadow: 0 1px 2px #000, 0 0 12px #000; pointer-events: none; }
 .hud--top {
   inset: 0 0 auto 0;
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0 1rem;
   padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem;
 }
+.hud--top > div { flex: 1 1 0; min-width: 0; }
 .hud--top h1 { font-size: clamp(1.8rem, 5vw, 3rem); margin: 0.15rem 0 0; letter-spacing: -0.01em; }
 .hud--top .hs-eyebrow { color: #aebb9f; }
 .hud--top button { pointer-events: auto; text-shadow: none; white-space: nowrap; flex: none; }
@@ -47,7 +50,30 @@ sub { line-height: 0; }
   display: flex; gap: 0.9rem; font-size: 0.8rem; color: #aebb9f;
 }
 .hud--stats b { color: #e9f0df; font-weight: 600; }
-.hud--hint { left: 50%; bottom: 1rem; transform: translateX(-50%); font: 400 0.75rem var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; color: #aebb9f; white-space: nowrap; }
+
+/* Section jump links under the title: the quick way down to the page content and the credits. */
+.jump { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: 0.4rem; }
+.jump a {
+  pointer-events: auto; display: inline-flex; align-items: center; min-height: 32px;
+  font: 400 0.72rem var(--font-label); letter-spacing: 0.1em; text-transform: uppercase;
+  color: #aebb9f; text-decoration: none; border-bottom: 2px solid transparent;
+}
+.jump a:hover { color: #4fe0a0; border-bottom-color: #4fe0a0; }
+
+.hud--zoom { left: 1rem; bottom: 2.9rem; display: flex; gap: 0.5rem; }
+/* Zoom buttons and the cue are hs-btn variants (offset shadow, springy hover, focus ring). */
+.zbtn { pointer-events: auto; width: 44px; padding: 0; justify-content: center; font: 500 1.4rem/1 var(--font-mono); text-shadow: none; }
+
+.hud--toast {
+  left: 50%; bottom: 6.5rem; transform: translateX(-50%); padding: 0.45rem 0.8rem;
+  font: 400 0.75rem var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  color: var(--fg); background: color-mix(in srgb, var(--bg-elev) 92%, transparent); box-shadow: var(--pix); text-shadow: none;
+}
+
+.hud--bottom { left: 50%; bottom: 0.75rem; transform: translateX(-50%); display: grid; justify-items: center; gap: 0.35rem; }
+.hint { margin: 0; font: 400 0.72rem var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; color: #aebb9f; white-space: nowrap; text-align: center; }
+.scroll-cue { pointer-events: auto; gap: 0.4rem; padding: 0 0.9rem; font: 400 0.75rem var(--font-label); letter-spacing: 0.1em; text-transform: uppercase; text-shadow: none; }
+.scroll-cue svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: square; }
 
 .hs-btn--ghost { color: var(--fg); background: var(--bg-elev); border-color: var(--border-strong); }
 
@@ -99,13 +125,21 @@ footer { padding-bottom: 2rem; }
 @media (max-width: 720px) {
   .hud--top .hs-btn { min-height: 40px; padding: 0.4rem 0.7rem; font-size: 0.88rem; }
   .hud--top .hs-eyebrow { font-size: 0.68rem; letter-spacing: 0.08em; }
-  .hud--hint { display: none; }
   .panel { left: 1rem; right: 1rem; width: auto; bottom: 0.75rem; max-height: 62%; }
   .panel:not([open]) { left: auto; }
-  .hud--stats { bottom: auto; top: 6.2rem; left: 1rem; }
+  .hud--stats { bottom: auto; top: 7.6rem; left: 1rem; }
+  .hud--zoom { bottom: 0.75rem; }
+  /* Phones: zoom buttons and Controls share the bottom row, so the cue sits just above it. */
+  .hud--bottom { bottom: calc(0.75rem + 44px + 0.75rem); width: calc(100% - 2rem); }
+  .hint { white-space: normal; font-size: 0.66rem; }
+  .hud--toast { bottom: 8rem; }
+  .jump { gap: 0 1rem; margin-top: 0.25rem; }
   .keylist { grid-template-columns: 1fr; }
   .keylist dd { margin-bottom: 0.4rem; }
 }
 @media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
   .panel { transition: box-shadow 0.2s; }
+  .scroll-cue svg { animation: cue-bob 1.6s var(--fx-ease) infinite; }
 }
+@keyframes cue-bob { 0%, 100% { transform: translateY(-1px); } 50% { transform: translateY(2px); } }

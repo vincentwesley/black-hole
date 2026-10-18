@@ -44,6 +44,7 @@ const panel = document.querySelector<HTMLDetailsElement>("#panel")!;
 const loaded = loadSettings();
 const settings: Settings = loaded.settings;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const coarsePointer = matchMedia("(pointer: coarse)").matches;
 if (!loaded.stored && reducedMotion) settings.cruise = false;
 if (matchMedia("(max-width: 720px)").matches) panel.open = false;
 
@@ -102,6 +103,7 @@ function showFallback(msg?: string): void {
   canvas.hidden = true;
   document.querySelector<HTMLElement>("#stats")!.hidden = true;
   document.querySelector<HTMLElement>("#hint")!.hidden = true;
+  document.querySelector<HTMLElement>(".hud--zoom")!.hidden = true;
   document.body.dataset.render = "fallback";
 }
 
@@ -134,7 +136,7 @@ if (renderer) {
   if (!loaded.stored) {
     const info = renderer.info();
     settings.quality = initialPreset({
-      mobile: matchMedia("(pointer: coarse)").matches,
+      mobile: coarsePointer,
       software: /swiftshader|llvmpipe|software|basic render/i.test(info.renderer),
       cores: navigator.hardwareConcurrency || 4,
     });
@@ -162,42 +164,93 @@ if (renderer) {
 }
 
 // ---- input ----
-const pointers = new Map<number, { x: number; y: number }>();
+// The render fills the first screen, so it must not trap page scrolling ("cooperative gestures"):
+// - mouse: drag orbits; plain wheel scrolls the page; Ctrl/⌘ + wheel zooms, and so does trackpad
+//   pinch (ctrl+wheel in Chromium and Firefox, gesture events in Safari).
+// - touch and pen (CSS touch-action: pan-y): a vertical swipe scrolls the page, a sideways drag
+//   orbits; two fingers tilt (move together) and zoom (pinch), with page scrolling suppressed.
+const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
+if (coarsePointer) document.querySelector("#hint")!.textContent = "Swipe sideways to orbit · two fingers to tilt and zoom";
+const toast = document.querySelector<HTMLElement>("#toast")!;
+function showToast(text: string): void {
+  if (!toast.hidden) return; // one announcement per burst of wheel events, not one per tick
+  toast.textContent = text;
+  toast.hidden = false;
+  window.setTimeout(() => (toast.hidden = true), 1800);
+}
+
+const pointers = new Map<number, { x: number; y: number; touch: boolean }>();
 let lastPinch = 0;
+let lastMid: { x: number; y: number } | null = null;
 let lastMove = performance.now();
 canvas.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "mouse" && e.button !== 0) return;
   canvas.setPointerCapture(e.pointerId);
-  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, touch: e.pointerType !== "mouse" });
   lastPinch = 0;
+  lastMid = null;
 });
 canvas.addEventListener("pointermove", (e) => {
   const prev = pointers.get(e.pointerId);
   if (!prev) return;
   const now = performance.now();
+  const s = 3.2 / Math.max(canvas.clientHeight, 1);
   if (pointers.size === 1) {
-    const s = 3.2 / Math.max(canvas.clientHeight, 1);
-    cam.rotate(-(e.clientX - prev.x) * s, (e.clientY - prev.y) * s, now - lastMove);
+    // One finger or pen only orbits sideways; its vertical motion belongs to page scrolling.
+    const dy = prev.touch ? 0 : (e.clientY - prev.y) * s;
+    cam.rotate(-(e.clientX - prev.x) * s, dy, now - lastMove);
   }
-  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  pointers.set(e.pointerId, { ...prev, x: e.clientX, y: e.clientY });
   if (pointers.size === 2) {
     const [a, b] = [...pointers.values()];
     const d = Math.hypot(a.x - b.x, a.y - b.y);
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     if (lastPinch) cam.zoom(lastPinch / d);
+    if (lastMid) cam.turn(-(mid.x - lastMid.x) * s, (mid.y - lastMid.y) * s);
     lastPinch = d;
+    lastMid = mid;
   }
   lastMove = now;
 });
 const endPointer = (e: PointerEvent) => {
   pointers.delete(e.pointerId);
   lastPinch = 0;
+  lastMid = null;
 };
 canvas.addEventListener("pointerup", endPointer);
 canvas.addEventListener("pointercancel", endPointer);
+// pan-y would let a two-finger vertical move scroll the page and cancel the tilt; claim
+// multi-touch moves for the camera instead.
+canvas.addEventListener("touchmove", (e) => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+// Safari reports trackpad pinch as non-standard gesture events rather than ctrl+wheel.
+let gestureScale = 1;
+canvas.addEventListener("gesturestart", (e) => {
+  e.preventDefault();
+  gestureScale = 1;
+});
+canvas.addEventListener("gesturechange", (e) => {
+  e.preventDefault();
+  const scale = (e as Event & { scale: number }).scale;
+  cam.zoom(gestureScale / scale);
+  gestureScale = scale;
+});
 canvas.addEventListener("wheel", (e) => {
+  if (!e.ctrlKey && !e.metaKey) {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) showToast(`Hold ${isMac ? "⌘" : "Ctrl"} and scroll to zoom`);
+    return; // let the page scroll
+  }
   e.preventDefault();
   const px = e.deltaY * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1); // lines / pages -> pixels
   cam.zoom(Math.exp(Math.sign(px) * Math.min(Math.abs(px), 200) * 0.0015));
 }, { passive: false });
+
+// On-screen zoom for anyone without a wheel, trackpad pinch or keyboard.
+// A velocity of ln(f) * 3.5 integrates to a factor of f under the camera's damping.
+for (const [id, f] of [["#zoom-in", 1 / 1.3], ["#zoom-out", 1.3]] as const) {
+  document.querySelector(id)!.addEventListener("click", () => (reducedMotion ? cam.zoom(f) : cam.zoomVelocity(Math.log(f) * 3.5)));
+}
 
 const keys = new Set<string>();
 // Physical key codes, so Shift (+ vs =) can't strand a key in the set.
@@ -308,12 +361,13 @@ document.querySelector("#snap")!.addEventListener("click", () => {
 // Test hook: lets e2e read back a frame without preserveDrawingBuffer.
 declare global {
   interface Window {
-    __bh?: { ready: () => boolean; milkyWay: () => boolean; setCamera: (c: Partial<Pick<OrbitCamera, "radius" | "azimuth" | "elevation">>) => void; sample: () => { w: number; h: number; mean: number; nonBlack: number; info: ReturnType<Renderer["info"]> } | null };
+    __bh?: { ready: () => boolean; milkyWay: () => boolean; radius: () => number; setCamera: (c: Partial<Pick<OrbitCamera, "radius" | "azimuth" | "elevation">>) => void; sample: () => { w: number; h: number; mean: number; nonBlack: number; info: ReturnType<Renderer["info"]> } | null };
   }
 }
 window.__bh = {
   ready: () => !!renderer,
   milkyWay: () => milkyWayLoaded,
+  radius: () => cam.radius,
   setCamera: (c) => Object.assign(cam, c),
   sample: () => {
     if (!renderer) return null;
