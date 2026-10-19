@@ -31,7 +31,7 @@ test("Doppler toggle and Film look change the frame", async ({ page }) => {
   await open(page);
   await page.waitForFunction(() => window.__bh?.ready());
   const panel = page.locator("#panel");
-  if (!(await panel.evaluate((d: HTMLDetailsElement) => d.open))) await panel.locator("summary").click();
+  if (!(await panel.evaluate((d: HTMLDetailsElement) => d.open))) await panel.locator(":scope > summary").click();
   const before = await sample(page);
   await page.getByLabel("Doppler beaming").uncheck();
   const after = await sample(page);
@@ -44,7 +44,7 @@ test("Milky Way map loads and adds light to the sky", async ({ page }) => {
   await open(page, { sky: 5 });
   await page.waitForFunction(() => window.__bh?.ready() && window.__bh.milkyWay());
   const panel = page.locator("#panel");
-  if (!(await panel.evaluate((d: HTMLDetailsElement) => d.open))) await panel.locator("summary").click();
+  if (!(await panel.evaluate((d: HTMLDetailsElement) => d.open))) await panel.locator(":scope > summary").click();
   const withMw = await sample(page);
   await page.getByLabel("Milky Way").uncheck();
   const without = await sample(page);
@@ -91,6 +91,48 @@ test("zoom buttons and the Credits link work", async ({ page }) => {
   await page.getByRole("link", { name: "Credits" }).click();
   await expect(page.locator("#credits")).toBeInViewport();
   await expect(page.getByText("Made by")).toBeVisible();
+});
+
+test("hide interface: button, H and Escape", async ({ page }) => {
+  await open(page);
+  await page.waitForFunction(() => window.__bh?.ready());
+  await page.getByRole("button", { name: "Hide interface" }).click();
+  await expect(page.locator("#panel")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Show interface" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#panel")).toBeVisible();
+  await page.keyboard.press("h");
+  await expect(page.getByRole("button", { name: "Zoom in" })).toBeHidden();
+  await page.keyboard.press("h");
+  await expect(page.getByRole("button", { name: "Zoom in" })).toBeVisible();
+});
+
+test("look description follows the look, and Reset all settings restores defaults", async ({ page }) => {
+  await open(page);
+  const panel = page.locator("#panel");
+  if (!(await panel.evaluate((d: HTMLDetailsElement) => d.open))) await panel.locator(":scope > summary").click();
+  await page.getByRole("radio", { name: "Film" }).check();
+  await expect(page.locator("#look-help")).toContainText("Interstellar");
+  await page.getByLabel("Doppler beaming").check();
+  await expect(page.locator("#look-help")).toContainText("Custom");
+  await page.getByRole("button", { name: "Reset all settings" }).click();
+  await expect(page.getByRole("radio", { name: "Physical" })).toBeChecked();
+  await expect(page.getByLabel("Doppler beaming")).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Low" })).toBeChecked(); // quality kept
+});
+
+test("the panel remembers the viewer's choice, not the size-based default", async ({ page }) => {
+  await open(page);
+  const panel = page.locator("#panel");
+  const isOpen = () => panel.evaluate((d: HTMLDetailsElement) => d.open);
+  expect(await page.evaluate(() => localStorage.getItem("bh-panel"))).toBeNull();
+  if (!(await isOpen())) await panel.locator(":scope > summary").click();
+  await panel.locator(":scope > summary").click(); // close
+  await page.reload();
+  expect(await isOpen()).toBe(false);
+  await panel.locator(":scope > summary").click(); // open
+  await page.reload();
+  expect(await isOpen()).toBe(true);
 });
 
 test("theme toggle switches the page chrome to light", async ({ page }) => {

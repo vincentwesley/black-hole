@@ -9,6 +9,7 @@ out vec4 outColor;
 uniform vec3 uCamPos;
 uniform mat3 uCamBasis;      // columns: right, up, forward
 uniform vec2 uTanHalfFov;
+uniform vec2 uShift;         // principal-point offset in NDC: keeps the hole centred in the area the UI leaves free
 uniform int uMaxSteps;
 uniform float uStepK;
 uniform float uEscape;
@@ -75,7 +76,7 @@ vec3 blackbody(float T) {
 }
 
 void main() {
-  vec2 ndc = vUv * 2.0 - 1.0;
+  vec2 ndc = vUv * 2.0 - 1.0 - uShift;
   vec3 dir = normalize(uCamBasis * vec3(ndc * uTanHalfFov, 1.0));
 
   vec3 x = uCamPos;

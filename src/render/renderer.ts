@@ -14,6 +14,7 @@ export interface SceneParams {
   camPos: [number, number, number];
   camBasis: Float32Array;
   fovY: number; // radians, vertical
+  shift: [number, number]; // principal-point offset in NDC
   time: number;
   tempPeak: number;
   diskOuter: number;
@@ -165,6 +166,7 @@ export class Renderer {
     gl.uniform3fv(u.uCamPos, p.camPos);
     gl.uniformMatrix3fv(u.uCamBasis, false, p.camBasis);
     gl.uniform2f(u.uTanHalfFov, tanY * (w / h), tanY);
+    gl.uniform2f(u.uShift, ...p.shift);
     gl.uniform1i(u.uMaxSteps, this.preset.maxSteps);
     gl.uniform1f(u.uStepK, this.preset.stepK);
     gl.uniform1f(u.uEscape, Math.max(50, Math.hypot(...p.camPos) * 1.05));

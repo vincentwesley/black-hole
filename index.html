@@ -42,10 +42,17 @@
         <span id="s-q">High</span>
       </p>
 
-      <div class="hud hud--zoom" role="group" aria-label="Zoom">
-        <button class="hs-btn hs-btn--ghost zbtn" type="button" id="zoom-in" aria-label="Zoom in">+</button>
-        <button class="hs-btn hs-btn--ghost zbtn" type="button" id="zoom-out" aria-label="Zoom out">−</button>
+      <div class="hud hud--tools" role="toolbar" aria-label="View">
+        <button class="hs-btn hs-btn--ghost tbtn" type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in (+)">+</button>
+        <button class="hs-btn hs-btn--ghost tbtn" type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out (−)">−</button>
+        <button class="hs-btn hs-btn--ghost tbtn" type="button" id="fullscreen" aria-label="Full screen" aria-pressed="false" title="Full screen (F)" hidden>
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>
+        </button>
+        <button class="hs-btn hs-btn--ghost tbtn" type="button" id="hide-ui" aria-label="Hide interface" title="Hide interface (H)">
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/><path d="M2 14L14 2"/></svg>
+        </button>
       </div>
+      <button class="hs-btn hs-btn--ghost show-ui" type="button" id="show-ui">Show interface</button>
 
       <p class="hud hud--toast" id="toast" role="status" hidden></p>
 
@@ -54,14 +61,40 @@
         <a class="hs-btn scroll-cue" href="#about">More below<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 6l5 5 5-5"/></svg></a>
       </div>
 
-      <details class="panel hs-card" id="panel" open>
-        <summary><span class="hs-chip">Controls</span></summary>
+      <details class="panel hs-card" id="panel">
+        <summary><span class="hs-chip">Controls</span><span class="panel__x" aria-hidden="true"></span></summary>
         <form id="controls" class="controls">
           <fieldset class="seg">
             <legend>Look</legend>
             <label><input type="radio" name="look" value="physical" checked> Physical</label>
             <label><input type="radio" name="look" value="interstellar"> Film</label>
           </fieldset>
+          <p class="help" id="look-help">Doppler beaming and gravitational redshift on, as relativity predicts.</p>
+          <fieldset class="toggles">
+            <legend>Effects</legend>
+            <label class="tog"><input type="checkbox" name="doppler" checked> Doppler beaming</label>
+            <label class="tog"><input type="checkbox" name="gravity" checked> Gravitational redshift</label>
+            <label class="tog"><input type="checkbox" name="milkyWay" checked> Milky Way</label>
+            <label class="tog"><input type="checkbox" name="cruise" checked> Cruise (slow orbit)</label>
+          </fieldset>
+          <fieldset class="group">
+            <legend>Disk</legend>
+            <label class="range">Temperature <output name="o-temp" class="mono">5800 K</output>
+              <input type="range" name="temp" min="2500" max="20000" step="100" value="5800"></label>
+            <label class="range">Outer edge <output name="o-outer" class="mono">12 r<sub>s</sub></output>
+              <input type="range" name="outer" min="5" max="25" step="0.5" value="12"></label>
+          </fieldset>
+          <details class="sub">
+            <summary>Image</summary>
+            <div class="group">
+              <label class="range">Exposure <output name="o-exp" class="mono">0.45</output>
+                <input type="range" name="exposure" min="0.05" max="3" step="0.05" value="0.45"></label>
+              <label class="range">Bloom <output name="o-bloom" class="mono">0.6</output>
+                <input type="range" name="bloom" min="0" max="1" step="0.05" value="0.6"></label>
+              <label class="range">Sky brightness <output name="o-sky" class="mono">2.5×</output>
+                <input type="range" name="sky" min="0" max="5" step="0.1" value="2.5"></label>
+            </div>
+          </details>
           <fieldset class="seg">
             <legend>Quality</legend>
             <label><input type="radio" name="quality" value="low"> Low</label>
@@ -69,25 +102,12 @@
             <label><input type="radio" name="quality" value="high" checked> High</label>
             <label><input type="radio" name="quality" value="ultra"> Ultra</label>
           </fieldset>
-          <label class="check"><input type="checkbox" name="auto" checked> Auto-lower quality when slow</label>
-          <label class="check"><input type="checkbox" name="doppler" checked> Doppler beaming</label>
-          <label class="check"><input type="checkbox" name="gravity" checked> Gravitational redshift</label>
-          <label class="check"><input type="checkbox" name="cruise" checked> Cruise (slow orbit)</label>
-          <label class="check"><input type="checkbox" name="milkyWay" checked> Milky Way</label>
-          <label class="range">Disk temperature <output name="o-temp" class="mono">5800 K</output>
-            <input type="range" name="temp" min="2500" max="20000" step="100" value="5800"></label>
-          <label class="range">Disk outer edge <output name="o-outer" class="mono">12 r<sub>s</sub></output>
-            <input type="range" name="outer" min="5" max="25" step="0.5" value="12"></label>
-          <label class="range">Exposure <output name="o-exp" class="mono">0.45</output>
-            <input type="range" name="exposure" min="0.05" max="3" step="0.05" value="0.45"></label>
-          <label class="range">Bloom <output name="o-bloom" class="mono">0.6</output>
-            <input type="range" name="bloom" min="0" max="1" step="0.05" value="0.6"></label>
-          <label class="range">Sky brightness <output name="o-sky" class="mono">2.5×</output>
-            <input type="range" name="sky" min="0" max="5" step="0.1" value="2.5"></label>
+          <label class="check"><input type="checkbox" name="auto" checked> Lower quality automatically when slow</label>
           <div class="row">
             <button class="hs-btn" type="button" id="reset">Reset view</button>
             <button class="hs-btn hs-btn--ghost" type="button" id="snap">Save PNG</button>
           </div>
+          <button class="linkbtn" type="button" id="reset-settings">Reset all settings</button>
         </form>
       </details>
     </section>
@@ -147,6 +167,8 @@
           <dt>Two fingers (touch)</dt><dd>Tilt and zoom; one finger swipes sideways to orbit and up or down to scroll the page</dd>
           <dt>Space</dt><dd>Cruise on or off</dd>
           <dt>R</dt><dd>Reset view</dd>
+          <dt>F</dt><dd>Full screen</dd>
+          <dt>H</dt><dd>Hide or show the interface</dd>
         </dl>
       </section>
     </div>

@@ -23,7 +23,7 @@ Needs WebGL2 (any current desktop or phone browser). Drag to orbit; pinch, Ctrl/
 - **Real sky**: the 9,096 stars of the Yale Bright Star Catalogue in galactic coordinates over NASA's Gaia-based Milky Way map, with the galactic centre lensed into an Einstein ring behind the hole.
 - **Bloom** (Jimenez 2014) and **ACES** tone mapping on half-float targets.
 - **Quality presets** (Low/Medium/High/Ultra) plus an automatic step-down when frames get slow. Runs on software GL (SwiftShader) in headless browsers.
-- Mouse, touch and keyboard: drag to orbit, pinch / Ctrl+scroll / +− buttons to zoom, two-finger tilt on touch, arrows/WASD, +/−, Space, R. The render never traps page scrolling. PNG snapshot.
+- Mouse, touch and keyboard: drag to orbit, pinch / Ctrl+scroll / +− buttons to zoom, two-finger tilt on touch, arrows/WASD, +/−, Space, R. The render never traps page scrolling. Full screen (F), hide the interface (H), PNG snapshot.
 
 The maths and every source are on the page under *How it works* and *References*, and in [`docs/RESEARCH.md`](docs/RESEARCH.md).
 
