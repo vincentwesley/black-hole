@@ -10,6 +10,8 @@ _Last updated: 2026-10-18. PRs #1–#3 merged; site live on GitHub Pages; repo p
 
 - **UX pass:** page scroll no longer trapped by the render (cooperative gestures), jump links to How it works / Sources / Credits, +/− zoom buttons, "More below" cue (DECISIONS #20).
 
+- **UI pass 2:** grouped controls panel that fits without scrolling, view recentres on the hole beside the panel, bottom-sheet panel on phones, Full screen and Hide interface (DECISIONS #21).
+
 ## One-time steps for Vincent
 All done (2026-10-17): repo made public, Pages source set to GitHub Actions, first deploy run. Live at https://vincentwesley.github.io/black-hole/.
 Optional, sidebar only (no API access from sessions): repo description, website, topics and social preview image (`public/og.jpg`).
