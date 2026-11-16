@@ -48,6 +48,9 @@ None. No API keys, no analytics, no third-party hosts. The page fetches only its
 ## Docs
 [`docs/PLAN.md`](docs/PLAN.md) architecture and milestones · [`docs/DECISIONS.md`](docs/DECISIONS.md) why it is built this way · [`docs/HANDOVER.md`](docs/HANDOVER.md) state and next steps · [`CREDITS.md`](CREDITS.md).
 
+## Credits
+Designed and built by Vin, Vin's Atelier (https://vwesley.dev). Logo by @portus_workstation / @wason25_pz (Instagram); the logo is all rights reserved (see NOTICE.md), not covered by the MIT licence.
+
 ## Licence
 MIT (`LICENSE`), except the credits card art (all rights reserved, `NOTICE.md`). Third-party material: `THIRD_PARTY_NOTICES.md`, `CREDITS.md`.
 

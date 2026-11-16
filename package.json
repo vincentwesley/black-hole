@@ -5,7 +5,7 @@
   "description": "Real-time Schwarzschild black hole in WebGL2: per-pixel ray-traced lensing, photon ring, Doppler-beamed accretion disk.",
   "type": "module",
   "license": "MIT",
-  "author": "Vincent Wesley",
+  "author": "Vin, Vin's Atelier (https://vwesley.dev)",
   "repository": {
     "type": "git",
     "url": "https://github.com/vincentwesley/black-hole.git"

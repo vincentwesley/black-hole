@@ -1,5 +1,7 @@
 import "./style.css";
 import "./credits/credits.js";
+import "./brand/logo.css";
+import "./brand/logo-resize";
 import { applyTheme, nextTheme, type Theme } from "./theme";
 import { OrbitCamera } from "./camera";
 import { Renderer, type SceneParams } from "./render/renderer";
