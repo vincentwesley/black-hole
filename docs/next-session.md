@@ -19,3 +19,4 @@ Continue work on **Black Hole (3D-18)** (repo `vincentwesley/black-hole`, deploy
 
 ## Known gaps
 1. See HANDOVER.md "Known issues" and "Next".
+- 2026-11-17: re-copied kit tokens.css per UPGRADING.md (src/credits/credits.css still older kit).
