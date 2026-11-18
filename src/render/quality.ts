@@ -13,7 +13,7 @@ export interface Preset {
 
 export const PRESETS: Record<PresetName, Preset> = {
   low: { label: "Low", renderScale: 0.5, maxDpr: 1, maxSteps: 140, stepK: 0.1, bloomLevels: 0, skySize: 512 },
-  medium: { label: "Medium", renderScale: 0.75, maxDpr: 1.5, maxSteps: 220, stepK: 0.07, bloomLevels: 5, skySize: 512 },
+  medium: { label: "Medium", renderScale: 0.75, maxDpr: 1.5, maxSteps: 220, stepK: 0.07, bloomLevels: 5, skySize: 1024 },
   high: { label: "High", renderScale: 1, maxDpr: 2, maxSteps: 320, stepK: 0.045, bloomLevels: 6, skySize: 1024 },
   ultra: { label: "Ultra", renderScale: 1, maxDpr: 3, maxSteps: 600, stepK: 0.025, bloomLevels: 7, skySize: 1024 },
 };

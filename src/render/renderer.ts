@@ -5,11 +5,14 @@ import sceneSrc from "./shaders/scene.frag?raw";
 import downSrc from "./shaders/down.frag?raw";
 import upSrc from "./shaders/up.frag?raw";
 import compositeSrc from "./shaders/composite.frag?raw";
+import labelSrc from "./shaders/label.frag?raw";
 import { blackbodyTable, blackbodyXYZ, T_REF } from "../physics/color";
 import { temperatureTable } from "../physics/disk";
 import { bakeStarFaces, MILKY_WAY_SCALE, placeStars, worldToGalacticMatrix, type PlacedStars, type Star } from "../sky/stars";
+import { B_CRIT, escapeRadius } from "../physics/schwarzschild";
 import type { Preset } from "./quality";
 import { Accumulator, jitter } from "./accum";
+import { anchors, buildAtlas, LABELS, type Atlas } from "./overlay";
 
 export interface SceneParams {
   camPos: [number, number, number];
@@ -40,8 +43,8 @@ type Uniforms = Record<string, WebGLUniformLocation | null>;
 export class Renderer {
   readonly gl: WebGL2RenderingContext;
   readonly floatTargets: boolean;
-  private progs: { scene: WebGLProgram; down: WebGLProgram; up: WebGLProgram; composite: WebGLProgram };
-  private uni: { scene: Uniforms; down: Uniforms; up: Uniforms; composite: Uniforms };
+  private progs: { scene: WebGLProgram; down: WebGLProgram; up: WebGLProgram; composite: WebGLProgram; label: WebGLProgram };
+  private uni: { scene: Uniforms; down: Uniforms; up: Uniforms; composite: Uniforms; label: Uniforms };
   private vao: WebGLVertexArrayObject;
   private sky: WebGLTexture;
   private milkyWay: WebGLTexture;
@@ -62,6 +65,10 @@ export class Renderer {
   private stars: PlacedStars = placeStars([]);
   private lumFor = 0;
   private lumScale = 1;
+  private overlay = false;
+  private atlas: (Atlas & { tex: WebGLTexture; px: number }) | null = null;
+  private anchorFor = "";
+  private anchorNdc: ([number, number] | null)[] = [];
 
   constructor(readonly canvas: HTMLCanvasElement, preset: Preset) {
     const gl = canvas.getContext("webgl2", { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: "high-performance" });
@@ -76,12 +83,14 @@ export class Renderer {
       down: program(gl, vert, downSrc),
       up: program(gl, vert, upSrc),
       composite: program(gl, vert, compositeSrc),
+      label: program(gl, vert, labelSrc),
     };
     this.uni = {
       scene: uniforms(gl, this.progs.scene),
       down: uniforms(gl, this.progs.down),
       up: uniforms(gl, this.progs.up),
       composite: uniforms(gl, this.progs.composite),
+      label: uniforms(gl, this.progs.label),
     };
     this.vao = gl.createVertexArray()!;
 
@@ -110,6 +119,11 @@ export class Renderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     this.accum.reset();
+  }
+
+  /** Educational overlay: shadow edge, photon sphere and ISCO rings with labels (off by default). */
+  setOverlay(on: boolean): void {
+    this.overlay = on;
   }
 
   setStars(stars: Star[]): void {
@@ -214,7 +228,7 @@ export class Renderer {
     gl.uniform2f(u.uShift, ...p.shift);
     gl.uniform1i(u.uMaxSteps, this.preset.maxSteps);
     gl.uniform1f(u.uStepK, this.preset.stepK);
-    gl.uniform1f(u.uEscape, Math.max(50, Math.hypot(...p.camPos) * 1.05));
+    gl.uniform1f(u.uEscape, escapeRadius(Math.hypot(...p.camPos)));
     gl.uniform2f(u.uDisk, 3, p.diskOuter);
     gl.uniform1f(u.uTempPeak, p.tempPeak);
     if (p.tempPeak !== this.lumFor) {
@@ -239,6 +253,8 @@ export class Renderer {
     const [sx, sy, rx, ry] = p.animated ? [jx, jy, 0, 0] : [0, 0, jx, jy];
     gl.uniform2f(u.uSkyJitter, sx, sy);
     gl.uniform2f(u.uJitterNdc, (2 * rx) / w, (2 * ry) / h);
+    gl.uniform1f(u.uOverlay, this.overlay ? 1 : 0);
+    gl.uniform1f(u.uBCrit, B_CRIT);
     bindTex(gl, 0, gl.TEXTURE_CUBE_MAP, this.sky, u.uSky);
     bindTex(gl, 1, gl.TEXTURE_2D, this.bbTex, u.uBlackbody);
     bindTex(gl, 2, gl.TEXTURE_2D, this.tempTex, u.uTempTable);
@@ -247,8 +263,14 @@ export class Renderer {
     if (direct) gl.uniform1i(u.uHist, 4);
     else bindTex(gl, 4, gl.TEXTURE_2D, this.hist[prev].tex, u.uHist);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-    if (direct) return;
+    if (!direct) this.post(p);
+    if (this.overlay) this.drawLabels(p, tanY);
+  }
 
+  /** Bloom and the tone-mapping composite onto the canvas (float targets only). */
+  private post(p: SceneParams): void {
+    const gl = this.gl;
+    const w = this.canvas.width, h = this.canvas.height;
     // Bloom: down the chain, then tent-upsample back up with additive blending.
     const useBloom = this.mips.length > 0 && p.bloom > 0;
     if (useBloom) {
@@ -289,6 +311,49 @@ export class Renderer {
     gl.uniform1f(c.uBloomStrength, Math.min(1, (p.bloom * 0.35) / Math.max(1, this.mips.length * 0.5)));
     gl.uniform1f(c.uExposure, p.exposure);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  /** Overlay labels, blended onto the canvas. Anchors are re-traced only when the view changes in a
+   * way an orbit about the disk axis doesn't (the rings are symmetric about it). */
+  private drawLabels(p: SceneParams, tanY: number): void {
+    const gl = this.gl;
+    const w = this.canvas.width, h = this.canvas.height;
+    const px = Math.max(10, Math.round((12 * w) / Math.max(1, this.canvas.clientWidth)));
+    if (this.atlas?.px !== px) {
+      if (this.atlas) gl.deleteTexture(this.atlas.tex);
+      const a = buildAtlas(px);
+      const tex = gl.createTexture()!;
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, a.canvas);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      this.atlas = { ...a, tex, px };
+    }
+    const tan: [number, number] = [tanY * (w / h), tanY];
+    const key = [Math.hypot(...p.camPos), p.camPos[1], w, h, p.fovY, this.preset.stepK].map((v) => v.toFixed(4)).join();
+    if (key !== this.anchorFor) {
+      this.anchorFor = key;
+      this.anchorNdc = anchors(p.camPos, p.camBasis, tan, this.preset);
+    }
+    const a = this.atlas;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.useProgram(this.progs.label);
+    bindTex(gl, 0, gl.TEXTURE_2D, a.tex, this.uni.label.uAtlas);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    LABELS.forEach((_, i) => {
+      const n = this.anchorNdc[i];
+      if (!n) return;
+      const x = ((n[0] + p.shift[0] + 1) / 2) * w, y = ((n[1] + p.shift[1] + 1) / 2) * h;
+      const lw = a.widths[i];
+      // Shadow label to the left of its point, the ring labels to the right.
+      gl.viewport(Math.round(i === 0 ? x - lw - 4 : x + 6), Math.round(y - a.row / 2), lw, a.row);
+      gl.uniform3f(this.uni.label.uRow, lw / a.canvas.width, (i * a.row) / a.canvas.height, ((i + 1) * a.row) / a.canvas.height);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    });
+    gl.disable(gl.BLEND);
+    gl.viewport(0, 0, w, h);
   }
 
   /** Renders one frame and reads it back immediately (tests and the snapshot button). */

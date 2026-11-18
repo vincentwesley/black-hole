@@ -37,6 +37,8 @@ uniform float uWeight;        // blend weight of this sample: 1 restarts the his
 uniform float uFull;          // 1: history holds the whole scene (time frozen); 0: only the sky layer
 uniform vec2 uJitterNdc;      // sub-pixel ray offset (full mode)
 uniform vec2 uSkyJitter;      // sub-pixel sky-lookup offset in pixels (sky mode; the ray stays put)
+uniform float uOverlay;       // 1: mark the shadow edge, photon sphere and ISCO (alpha channel / direct blend)
+uniform float uBCrit;         // critical impact parameter 3√3 M in r_s
 
 const int HARD_MAX = 1024;
 
@@ -44,6 +46,11 @@ float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
   p += dot(p, p + 45.32);
   return fract(p.x * p.y);
+}
+// Educational overlay: anti-aliased line where a smoothly varying quantity v crosses R.
+float lineAt(float v, float R) {
+  float w = fwidth(v);
+  return v > 0.0 && w < 0.3 * R ? 1.0 - smoothstep(0.5, 1.5, abs(v - R) / max(w, 1e-6)) : 0.0;
 }
 float vnoise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
@@ -101,14 +108,15 @@ void main() {
 
   vec3 col = vec3(0.0);
   float trans = 1.0;
-  bool captured = false;
+  bool gone = false; // left through the escape radius
+  float c1 = 0.0, c2 = 0.0, t2 = 0.0; // radii of the first two disk-plane crossings (overlay), trans at the second
   float r = r0;
   vec3 a = -1.5 * h2 * x / (r * r * r * r * r);
 
   for (int i = 0; i < HARD_MAX; i++) {
     if (i >= uMaxSteps) break;
-    if (r < 1.0) { captured = true; break; }
-    if (r > uEscape && dot(x, v) > 0.0) break;
+    if (r < 1.0) break;
+    if (r > uEscape && dot(x, v) > 0.0) { gone = true; break; }
     float dt = uStepK * max(r - 0.5, 0.1) / length(v);
     vec3 vh = v + a * (0.5 * dt);
     vec3 xn = x + vh * dt;
@@ -118,6 +126,8 @@ void main() {
     if (x.y * xn.y < 0.0) {
       vec3 p = mix(x, xn, x.y / (x.y - xn.y));
       float rc = length(p);
+      if (c1 == 0.0) c1 = rc;
+      else if (c2 == 0.0) { c2 = rc; t2 = trans; }
       if (rc > uDisk.x && rc < uDisk.y) {
         float tn = texture(uTempTable, vec2((rc - uTempRange.x) / (uTempRange.y - uTempRange.x), 0.5)).r;
         float om = sqrt(0.5 / (rc * rc * rc));
@@ -142,7 +152,10 @@ void main() {
   // quad did not escape (its v is meaningless), so the shadow edge doesn't pick a blurry mip. The u
   // derivative is wrapped for the l = ±180° seam and scaled by cos b so the poles stay sharp.
   // The equirect mapping mirrors galacticToUv() in src/sky/stars.ts.
-  bool escaped = !captured && r > 1.5 && trans > 0.01;
+  // A ray that runs out of steps is still circling the photon sphere: its true fate is decided
+  // within ~1 % of the critical impact parameter, where the sky is squeezed to a sliver, so it
+  // is drawn dark like a captured one (it used to sample the sky along its last tangent).
+  bool escaped = gone && trans > 0.01;
   float esc = escaped ? 1.0 : 0.0;
   float keepX = dFdx(esc) == 0.0 ? 1.0 : 0.0, keepY = dFdy(esc) == 0.0 ? 1.0 : 0.0;
   vec3 sd = normalize(v);
@@ -161,12 +174,30 @@ void main() {
     vec2 uvj = uv + uSkyJitter.x * uvx + uSkyJitter.y * uvy;
     sky = (textureGrad(uSky, sdj, sdx, sdy).rgb + textureGrad(uMilkyWay, uvj, uvx, uvy).rgb * uMwGain) * uStarGain;
   }
+
+  // Overlay, encoded as kind + coverage (1 shadow edge, 2 photon sphere, 3 ISCO; 0 none). The
+  // shadow edge is where the view direction makes the critical angle with the hole,
+  // sin α = b_crit sqrt(1 - r_s/r) / r (exact for a static observer); the photon sphere (its
+  // equator) and the ISCO are circles in the disk plane, drawn where this ray crosses it, so they
+  // are lensed exactly like the disk (both images; the second dimmed by the disk in front).
+  float ov = 0.0;
+  if (uOverlay > 0.5) {
+    float alpha = acos(clamp(-dot(dir, rhat), -1.0, 1.0));
+    float ls = lineAt(alpha, asin(min(uBCrit * kk / r0, 1.0)));
+    float lp = max(lineAt(c1, 1.5), lineAt(c2, 1.5) * t2);
+    float li = max(lineAt(c1, 3.0), lineAt(c2, 3.0) * t2);
+    float m = max(ls, max(lp, li));
+    if (m > 0.004) ov = (m == li ? 3.0 : m == lp ? 2.0 : 1.0) + min(m, 0.99);
+  }
+
   if (uDirect > 0.5) {
-    outColor = vec4(toSrgb(aces((col + trans * sky) * uExposure)), 1.0);
+    vec3 c = toSrgb(aces((col + trans * sky) * uExposure)) + (hash(gl_FragCoord.xy) - 0.5) / 255.0; // same dither as composite.frag
+    if (ov > 0.0) c = mix(c, ov > 3.0 ? vec3(0.31, 0.878, 0.627) : ov > 2.0 ? vec3(0.914, 0.627, 0.498) : vec3(0.663, 0.588, 0.878), 0.85 * fract(ov));
+    outColor = vec4(c, 1.0);
     return;
   }
   vec3 cur = uFull > 0.5 ? col + trans * sky : sky;
   vec3 h = uWeight >= 1.0 ? cur : mix(texelFetch(uHist, ivec2(gl_FragCoord.xy), 0).rgb, cur, uWeight);
   outHist = vec4(h, 1.0);
-  outColor = vec4(uFull > 0.5 ? h : col + trans * h, 1.0);
+  outColor = vec4(uFull > 0.5 ? h : col + trans * h, ov);
 }

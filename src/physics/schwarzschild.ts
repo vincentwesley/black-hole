@@ -90,6 +90,11 @@ export interface TraceResult {
   steps: number;
 }
 
+/** Radius where a ray counts as escaped for a camera at rCam (the renderer's uEscape). Stopping at
+ * 1.05 rCam left rays passing the camera sideways up to 0.6 mrad short of their final bending;
+ * 2 rCam keeps it under 0.05 mrad for a few extra steps (tests/tiers.test.ts). */
+export const escapeRadius = (rCam: number): number => Math.max(100, 2 * rCam);
+
 export const DEFAULT_TRACE: TraceOptions = { maxSteps: 400, stepK: 0.05, escapeRadius: 50 };
 
 /** Leapfrog (kick-drift-kick) integration of x'' = -1.5 h^2 x / r^5 with steps ∝ r. */

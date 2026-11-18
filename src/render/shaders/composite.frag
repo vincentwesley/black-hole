@@ -16,5 +16,8 @@ void main() {
   if (uHasBloom > 0.5) c = mix(c, texture(uBloom, vUv).rgb, uBloomStrength);
   c = toSrgb(aces(c * uExposure));
   c += (hash(gl_FragCoord.xy) - 0.5) / 255.0;
+  // Overlay lines from scene.frag (alpha = kind + coverage), drawn over the tone-mapped image.
+  float ov = texelFetch(uScene, ivec2(gl_FragCoord.xy), 0).a;
+  if (ov > 0.0) c = mix(c, ov > 3.0 ? vec3(0.31, 0.878, 0.627) : ov > 2.0 ? vec3(0.914, 0.627, 0.498) : vec3(0.663, 0.588, 0.878), 0.85 * fract(ov));
   outColor = vec4(c, 1.0);
 }

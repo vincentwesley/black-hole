@@ -409,8 +409,16 @@ function params(): SceneParams {
   };
 }
 
+// Idle power: after IDLE_MS with no input the animated view drops to ~30 fps (the cruise orbit
+// and disk drift are slow enough not to need 60); any input restores the full rate at once.
+const IDLE_MS = 5000;
+let lastInput = performance.now();
+for (const ev of ["pointerdown", "pointermove", "wheel", "keydown", "touchstart"]) addEventListener(ev, () => (lastInput = performance.now()), { passive: true, capture: true });
+
 function frame(now: number): void {
   requestAnimationFrame(frame);
+  const idle = now - lastInput > IDLE_MS;
+  if (idle && now - last < 30) return; // skip every other 60 Hz frame (dt keeps accruing)
   const dtMs = Math.min(now - last, 100);
   last = now;
   if (!renderer || !visible || document.hidden) return;
@@ -431,7 +439,7 @@ function frame(now: number): void {
     fpsAcc = 0;
     fpsFrames = 0;
   }
-  if (settings.auto && governor.push(dtMs)) {
+  if (settings.auto && !idle && governor.push(dtMs)) {
     const i = PRESET_ORDER.indexOf(settings.quality);
     if (i > 0) {
       settings.quality = PRESET_ORDER[i - 1];
@@ -467,7 +475,7 @@ document.querySelector("#snap")!.addEventListener("click", () => {
 // Test hook: lets e2e read back a frame without preserveDrawingBuffer.
 declare global {
   interface Window {
-    __bh?: { ready: () => boolean; milkyWay: () => boolean; radius: () => number; samples: () => number; setCamera: (c: Partial<Pick<OrbitCamera, "radius" | "azimuth" | "elevation">>) => void; sample: () => { w: number; h: number; mean: number; nonBlack: number; info: ReturnType<Renderer["info"]> } | null };
+    __bh?: { ready: () => boolean; milkyWay: () => boolean; radius: () => number; samples: () => number; setCamera: (c: Partial<Pick<OrbitCamera, "radius" | "azimuth" | "elevation">>) => void; read: () => Uint8Array | null; setOverlay: (on: boolean) => void; sample: () => { w: number; h: number; mean: number; nonBlack: number; info: ReturnType<Renderer["info"]> } | null };
   }
 }
 window.__bh = {
@@ -476,6 +484,8 @@ window.__bh = {
   radius: () => cam.radius,
   samples: () => renderer?.samples ?? 0,
   setCamera: (c) => Object.assign(cam, c),
+  read: () => renderer?.readPixels(params()) ?? null,
+  setOverlay: (on) => renderer?.setOverlay(on),
   sample: () => {
     if (!renderer) return null;
     const px = renderer.readPixels(params());
