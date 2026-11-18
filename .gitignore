@@ -25,3 +25,5 @@ brag-output/
 .wrangler/
 *.zip
 qa-output/
+# Local agent config and personal prompts (never tracked)
+.claude/
