@@ -21,3 +21,4 @@ Continue work on **Black Hole (3D-18)** (repo `vincentwesley/black-hole`, deploy
 1. See HANDOVER.md "Known issues" and "Next".
 - 2026-11-17: re-copied kit tokens.css per UPGRADING.md (src/credits/credits.css still older kit).
 - 2026-11-17: logo spec waits for the --logo-x transition before measuring (15s polls).
+- 2026-11-18: credits.css upgraded to kit (UPGRADING.md step 6); fireflies now styled in CSS, no inline style attrs.
