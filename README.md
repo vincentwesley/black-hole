@@ -25,6 +25,9 @@ Needs WebGL2 (any current desktop or phone browser). Drag to orbit; pinch, Ctrl/
 - **Bloom** (Jimenez 2014) and **ACES** tone mapping on half-float targets.
 - **Quality presets** (Low/Medium/High/Ultra) plus an automatic step-down when frames get slow. Runs on software GL (SwiftShader) in headless browsers.
 - Mouse, touch and keyboard: drag to orbit, pinch / Ctrl+scroll / +− buttons to zoom, two-finger tilt on touch, arrows/WASD, +/−, Space, R. The render never traps page scrolling. Full screen (F), hide the interface (H), PNG snapshot.
+- **View presets** (Face-on, Edge-on, Close pass at 7 r<sub>s</sub>, Photon ring) glide the camera there, or jump under reduced motion. **Copy link** puts the view and key settings in the URL hash (written only on that click); opening such a link restores them, and invalid parts fall back to defaults.
+- **Show radii** overlays the photon sphere (1.5 r<sub>s</sub>), the innermost stable orbit (3 r<sub>s</sub>) and the shadow edge, off by default (when the renderer provides it).
+- Tests expose `window.__bh` only when the URL has `?e2e`.
 
 The maths and every source are on the page under *How it works* and *References*, and in [`docs/RESEARCH.md`](docs/RESEARCH.md).
 
@@ -34,7 +37,7 @@ npm ci --ignore-scripts
 npm run dev                # http://localhost:5173
 npm run typecheck && npm run lint && npm test
 npm run build              # dist/
-npm run test:e2e           # Playwright + axe; set PW_CHROMIUM=/path/to/chromium if Playwright's browser isn't installed
+npm run test:e2e           # PW_PORT=4731 changes the preview port; Playwright + axe; set PW_CHROMIUM=/path/to/chromium if Playwright's browser isn't installed
 ```
 Node 24 (`.nvmrc`). Regenerate the data files:
 - stars: `npm run stars -- path/to/bsc5.dat public/data/stars.bin` (download `catalog.gz` from CDS V/50)

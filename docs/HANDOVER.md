@@ -14,6 +14,8 @@ _Last updated: 2026-10-18. PRs #1–#3 merged; site live on GitHub Pages; repo p
 
 - **Progressive accumulation (2026-11-18, DECISIONS #22):** with the camera still, jittered samples average into a float history; sky layer only while the disk animates, the whole image (then idle, no new frames) when time is frozen by reduced motion. Any change resets it instantly. Fallback without float targets: the old direct render. Tune the sample cap with `SAMPLE_CAP` in `src/render/accum.ts` (more = smoother, longer to settle); the view tolerance is `TOL` there. `window.__bh.samples()` reports the count.
 
+- **UI pass 3 (2026-11-18, branch bh-ui):** no first-paint layout shift (panel open state set by `public/panel-init.js` before paint, CSS default for `--free-right`), 48px tap targets, tablet HUD layout (<=900px), camera presets, share link (`encodeView`/`decodeView` in `settings.ts`), Show radii toggle (calls `renderer.setOverlay` if it exists), no-WebGL2 caption and lazy `fallback.jpg`, canvas `role=application` + keyboard help + polite zoom readout, reduced-motion change listener and no drag inertia under it. `window.__bh` now needs `?e2e` (`scripts/screenshots.mjs` and `hero.mjs` add it). Preloaded fonts: Inter and Space Grotesk. Left as is: the single CSS file stays render-blocking (everything is styled by it) and `logo-init.js`/`panel-init.js` stay unhashed classic scripts in `public/` (pre-paint; Vite only warns they are not bundled).
+
 ## One-time steps for Vincent
 All done (2026-10-17): repo made public, Pages source set to GitHub Actions, first deploy run. Live at https://vincentwesley.github.io/black-hole/.
 Optional, sidebar only (no API access from sessions): repo description, website, topics and social preview image (`public/og.jpg`).

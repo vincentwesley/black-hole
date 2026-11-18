@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULTS, LOOKS, sanitize } from "../src/settings";
+import { DEFAULTS, LOOKS, decodeView, encodeView, sanitize } from "../src/settings";
 import { bufferSize, Governor, initialPreset, PRESETS } from "../src/render/quality";
 import { OrbitCamera, R_MAX, R_MIN } from "../src/camera";
 
@@ -17,6 +17,23 @@ describe("settings", () => {
   it("film look removes every frequency shift", () => {
     expect(LOOKS.interstellar.doppler).toBe(false);
     expect(LOOKS.interstellar.gravity).toBe(false);
+  });
+});
+
+describe("share link", () => {
+  it("round-trips the view and settings", () => {
+    const st = { ...DEFAULTS, look: "interstellar" as const, quality: "ultra" as const, overlay: true, temp: 4300, doppler: false };
+    const v = { radius: 7.25, azimuth: -1.5, elevation: 0.32 };
+    const out = decodeView(`#${encodeView(st, v)}`, DEFAULTS);
+    expect(out.settings).toEqual(st);
+    expect(out.view).toEqual(v);
+    expect(out.hasQuality).toBe(true);
+  });
+  it("ignores junk: defaults for settings, no view", () => {
+    const out = decodeView("#r=abc&az=&el=1&q=turbo&temp=NaN&look=x&doppler=maybe", DEFAULTS);
+    expect(out.settings).toEqual(DEFAULTS);
+    expect(out.view).toBeNull();
+    expect(out.hasQuality).toBe(false);
   });
 });
 

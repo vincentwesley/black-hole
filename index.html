@@ -14,15 +14,17 @@
   <meta property="og:description" content="Real-time gravitational lensing, traced per pixel in WebGL2.">
   <meta property="og:image" content="og.jpg">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="./src/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./src/fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <title>Black Hole</title>
 </head>
 <body>
   <a class="skip" href="#about">Skip to how it works</a>
   <main>
     <section class="stage" aria-labelledby="h-title">
-      <canvas id="view" tabindex="0" role="img" aria-label="Rendered black hole. Drag or use the arrow keys to orbit; pinch, Ctrl plus scroll, the zoom buttons or plus and minus keys to zoom."></canvas>
+      <canvas id="view" tabindex="0" role="application" aria-roledescription="interactive black hole view" aria-label="Black hole view" aria-describedby="keylist" aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown W A S D + - Space R"></canvas>
       <div class="fallback" id="fallback" hidden>
-        <img src="fallback.jpg" alt="" width="1280" height="720">
+        <img data-src="fallback.jpg" alt="" width="1280" height="720">
         <p id="fallback-msg">This browser could not start WebGL2, so here is a still frame instead.</p>
       </div>
 
@@ -39,6 +41,7 @@
         </nav>
       </header>
 
+      <p class="sr-only" id="zoom-live" aria-live="polite"></p>
       <p class="hud hud--stats mono" id="stats" aria-live="off">
         <span><b id="s-r">18.0</b> r<sub>s</sub></span>
         <span><b id="s-fps">--</b> fps</span>
@@ -64,9 +67,16 @@
         <a class="hs-btn scroll-cue" href="#about">More below<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 6l5 5 5-5"/></svg></a>
       </div>
 
-      <details class="panel hs-card" id="panel">
+      <details class="panel hs-card" id="panel" open>
         <summary><span class="hs-chip">Controls</span><span class="panel__x" aria-hidden="true"></span></summary>
         <form id="controls" class="controls">
+          <fieldset class="presets">
+            <legend>View</legend>
+            <button class="hs-btn hs-btn--ghost" type="button" data-view="face-on">Face-on</button>
+            <button class="hs-btn hs-btn--ghost" type="button" data-view="edge-on">Edge-on</button>
+            <button class="hs-btn hs-btn--ghost" type="button" data-view="close">Close pass (7 r<sub>s</sub>)</button>
+            <button class="hs-btn hs-btn--ghost" type="button" data-view="ring">Photon ring</button>
+          </fieldset>
           <fieldset class="seg">
             <legend>Look</legend>
             <label><input type="radio" name="look" value="physical" checked> Physical</label>
@@ -79,6 +89,7 @@
             <label class="tog"><input type="checkbox" name="gravity" checked> Gravitational redshift</label>
             <label class="tog"><input type="checkbox" name="milkyWay" checked> Milky Way</label>
             <label class="tog"><input type="checkbox" name="cruise" checked> Cruise (slow orbit)</label>
+            <label class="tog"><input type="checkbox" name="overlay"> Show radii (photon sphere, ISCO, shadow)</label>
           </fieldset>
           <fieldset class="group">
             <legend>Disk</legend>
@@ -109,10 +120,12 @@
           <div class="row">
             <button class="hs-btn" type="button" id="reset">Reset view</button>
             <button class="hs-btn hs-btn--ghost" type="button" id="snap">Save PNG</button>
+            <button class="hs-btn hs-btn--ghost" type="button" id="share">Copy link</button>
           </div>
           <button class="linkbtn" type="button" id="reset-settings">Reset all settings</button>
         </form>
       </details>
+      <script src="panel-init.js"></script>
     </section>
     <div class="page">
       <section class="hs-card about" id="about" aria-labelledby="h-about" tabindex="-1">
@@ -164,7 +177,7 @@
       <section class="hs-card keys" aria-labelledby="h-keys">
         <p class="hs-eyebrow">Controls</p>
         <h2 id="h-keys">Fly around</h2>
-        <dl class="keylist">
+        <dl class="keylist" id="keylist">
           <dt>Drag, or arrow keys / WASD</dt><dd>Orbit</dd>
           <dt>Pinch, Ctrl/⌘ + scroll, + / − or the zoom buttons</dt><dd>Zoom between 2.2 and 60 r<sub>s</sub></dd>
           <dt>Two fingers (touch)</dt><dd>Tilt and zoom; one finger swipes sideways to orbit and up or down to scroll the page</dd>

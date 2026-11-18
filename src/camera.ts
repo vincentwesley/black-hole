@@ -3,7 +3,7 @@ import type { Vec3 } from "./physics/schwarzschild";
 
 export const R_MIN = 2.2; // stays outside the photon sphere (1.5) with a margin
 export const R_MAX = 60;
-const EL_MAX = Math.PI / 2 - 0.02;
+export const EL_MAX = Math.PI / 2 - 0.02;
 
 export interface CameraState {
   radius: number;
@@ -32,10 +32,10 @@ export class OrbitCamera implements CameraState {
   }
 
   /** Direct rotation for drags; keeps a bit of the motion as inertia. */
-  rotate(dAz: number, dEl: number, dtMs: number): void {
+  rotate(dAz: number, dEl: number, dtMs: number, inertia = true): void {
     this.azimuth += dAz;
     this.elevation = clamp(this.elevation + dEl, -EL_MAX, EL_MAX);
-    const k = 1000 / Math.max(dtMs, 8);
+    const k = inertia ? 1000 / Math.max(dtMs, 8) : 0; // reduced motion: no coasting after release
     this.vAz = dAz * k * 0.6;
     this.vEl = dEl * k * 0.6;
   }

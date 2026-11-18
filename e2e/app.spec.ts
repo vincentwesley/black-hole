@@ -6,7 +6,7 @@ async function open(page: Page, settings: Record<string, unknown> = {}) {
   await page.addInitScript((s) => {
     localStorage.setItem("bh-settings", JSON.stringify({ quality: "low", auto: false, cruise: false, ...s }));
   }, settings);
-  await page.goto("/");
+  await page.goto("/?e2e");
 }
 
 const sample = (page: Page) => page.evaluate(() => window.__bh!.sample()!);

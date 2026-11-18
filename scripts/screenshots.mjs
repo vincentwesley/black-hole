@@ -21,7 +21,7 @@ for (const s of shots.filter((x) => x.name.includes(only))) {
     localStorage.setItem("theme", theme);
     if (json) localStorage.setItem("bh-settings", json);
   }, [s.theme, settings]);
-  await page.goto(url);
+  await page.goto(`${url}${url.includes("?") ? "&" : "?"}e2e`); // ?e2e exposes window.__bh
   await page.waitForFunction(() => window.__bh?.ready());
   await page.waitForTimeout(2500);
   await page.screenshot({ path: `${out}/${s.name}.png` });

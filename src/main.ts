@@ -3,10 +3,10 @@ import "./credits/credits.js";
 import "./brand/logo.css";
 import "./brand/logo-resize";
 import { applyTheme, nextTheme, type Theme } from "./theme";
-import { OrbitCamera } from "./camera";
+import { EL_MAX, OrbitCamera, R_MAX, R_MIN } from "./camera";
 import { Renderer, type SceneParams } from "./render/renderer";
 import { bufferSize, Governor, initialPreset, PRESET_ORDER, PRESETS, type PresetName } from "./render/quality";
-import { DEFAULTS, LOOKS, loadSettings, saveSettings, type Look, type Settings } from "./settings";
+import { DEFAULTS, LOOKS, decodeView, encodeView, loadSettings, saveSettings, type Look, type Settings, type View } from "./settings";
 import { parseStars } from "./sky/stars";
 
 // ---- theme (page chrome only; the render is always dark) ----
@@ -44,21 +44,16 @@ themeBtn.addEventListener("click", () => {
 const form = document.querySelector<HTMLFormElement>("#controls")!;
 const panel = document.querySelector<HTMLDetailsElement>("#panel")!;
 const loaded = loadSettings();
-const settings: Settings = loaded.settings;
-const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// A share link (#r=...&az=...) overrides the stored settings for this visit only; invalid parts fall back to defaults.
+const linked = location.hash.length > 1 ? decodeView(location.hash, loaded.settings) : null;
+const settings: Settings = linked ? linked.settings : loaded.settings;
+const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");
+let reducedMotion = reducedQuery.matches;
 const coarsePointer = matchMedia("(pointer: coarse)").matches;
 if (!loaded.stored && reducedMotion) settings.cruise = false;
 
-// The panel starts open only where it fits beside the render; afterwards it keeps the viewer's choice.
+// panel-init.js (before first paint) sets the initial open state, so the first frame is the final layout.
 const PANEL_KEY = "bh-panel";
-const storedPanel = (() => {
-  try {
-    return localStorage.getItem(PANEL_KEY);
-  } catch {
-    return null;
-  }
-})();
-panel.open = storedPanel ? storedPanel === "open" : innerWidth >= 1100 && innerHeight >= 700;
 // Only a viewer's own click is remembered; the size-based default above also fires "toggle".
 let panelClicked = false;
 panel.querySelector(":scope > summary")!.addEventListener("click", () => (panelClicked = true));
@@ -92,7 +87,7 @@ const outputs = {
 function writeForm(): void {
   field<RadioNodeList>("look").value = settings.look;
   field<RadioNodeList>("quality").value = settings.quality;
-  for (const k of ["auto", "doppler", "gravity", "cruise", "milkyWay"] as const) field(k).checked = settings[k];
+  for (const k of ["auto", "doppler", "gravity", "cruise", "milkyWay", "overlay"] as const) field(k).checked = settings[k];
   for (const k of ["temp", "outer", "exposure", "bloom", "sky"] as const) field(k).value = String(settings[k]);
   outputs.temp.textContent = `${settings.temp} K`;
   outputs.outer.innerHTML = `${settings.outer} r<sub>s</sub>`;
@@ -112,6 +107,7 @@ function readForm(e: Event): void {
     applyPreset();
   } else if (t.type === "checkbox") {
     (settings as unknown as Record<string, boolean>)[t.name] = t.checked;
+    if (t.name === "overlay") applyOverlay();
   } else if (t.type === "range") {
     (settings as unknown as Record<string, number>)[t.name] = Number(t.value);
   }
@@ -125,6 +121,8 @@ writeForm();
 const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
 const stats = { r: document.querySelector("#s-r")!, fps: document.querySelector("#s-fps")!, q: document.querySelector("#s-q")! };
 const cam = new OrbitCamera();
+const clampView = (v: View): View => ({ radius: Math.min(R_MAX, Math.max(R_MIN, v.radius)), azimuth: v.azimuth, elevation: Math.min(EL_MAX, Math.max(-EL_MAX, v.elevation)) });
+if (linked?.view) Object.assign(cam, clampView(linked.view));
 const governor = new Governor();
 let renderer: Renderer | null = null;
 let milkyWayLoaded = false;
@@ -132,11 +130,14 @@ let milkyWayLoaded = false;
 function showFallback(msg?: string): void {
   const fb = document.querySelector<HTMLElement>("#fallback")!;
   fb.hidden = false;
+  const img = fb.querySelector("img")!;
+  if (!img.getAttribute("src")) img.src = img.dataset.src!; // only now: working browsers never fetch the still
   if (msg) document.querySelector("#fallback-msg")!.textContent = msg;
   canvas.hidden = true;
   document.querySelector<HTMLElement>("#stats")!.hidden = true;
   document.querySelector<HTMLElement>("#hint")!.hidden = true;
   document.querySelector<HTMLElement>(".hud--tools")!.hidden = true;
+  panel.hidden = true; // nothing left to control
   document.body.dataset.render = "fallback";
 }
 
@@ -145,6 +146,11 @@ try {
 } catch (err) {
   console.warn(err);
   showFallback();
+}
+
+// The overlay is the renderer's optional educational layer (photon sphere, ISCO, shadow); absent builds just skip it.
+function applyOverlay(): void {
+  (renderer as unknown as { setOverlay?: (on: boolean) => void } | null)?.setOverlay?.(settings.overlay);
 }
 
 function applyPreset(): void {
@@ -166,7 +172,8 @@ function resize(): void {
 }
 
 if (renderer) {
-  if (!loaded.stored) {
+  applyOverlay();
+  if (!loaded.stored && !linked?.hasQuality) {
     const info = renderer.info();
     settings.quality = initialPreset({
       mobile: coarsePointer,
@@ -218,6 +225,7 @@ let lastMid: { x: number; y: number } | null = null;
 let lastMove = performance.now();
 canvas.addEventListener("pointerdown", (e) => {
   if (e.pointerType === "mouse" && e.button !== 0) return;
+  cancelAnimationFrame(tween);
   canvas.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, touch: e.pointerType !== "mouse" });
   lastPinch = 0;
@@ -231,7 +239,7 @@ canvas.addEventListener("pointermove", (e) => {
   if (pointers.size === 1) {
     // One finger or pen only orbits sideways; its vertical motion belongs to page scrolling.
     const dy = prev.touch ? 0 : (e.clientY - prev.y) * s;
-    cam.rotate(-(e.clientX - prev.x) * s, dy, now - lastMove);
+    cam.rotate(-(e.clientX - prev.x) * s, dy, now - lastMove, !reducedMotion);
   }
   pointers.set(e.pointerId, { ...prev, x: e.clientX, y: e.clientY });
   if (pointers.size === 2) {
@@ -295,7 +303,10 @@ canvas.addEventListener("keydown", (e) => {
     writeForm();
     saveSettings(settings);
   } else if (k === "KeyR") cam.reset();
-  else if (HELD.includes(k)) keys.add(k);
+  else if (HELD.includes(k)) {
+    keys.add(k);
+    cancelAnimationFrame(tween);
+  }
   else return;
   e.preventDefault();
 });
@@ -313,7 +324,48 @@ function applyKeys(dt: number): void {
   if (on("Minus", "NumpadSubtract")) cam.zoom(Math.exp(dt * 0.9));
 }
 
-document.querySelector("#reset")!.addEventListener("click", () => cam.reset());
+document.querySelector("#reset")!.addEventListener("click", () => {
+  cancelAnimationFrame(tween);
+  cam.reset();
+});
+
+// ---- camera presets: glide to a pose (instant under reduced motion); azimuth is kept ----
+const POSES: Record<string, { radius: number; elevation: number }> = {
+  "face-on": { radius: 14, elevation: 1.5 },
+  "edge-on": { radius: 18, elevation: 0.02 },
+  close: { radius: 7, elevation: 0.32 }, // the docs/img/close.jpg pose
+  ring: { radius: 6, elevation: 0.9 },
+};
+let tween = 0;
+function flyTo(pose: { radius: number; elevation: number }): void {
+  cancelAnimationFrame(tween);
+  const to = clampView({ ...pose, azimuth: cam.azimuth });
+  if (reducedMotion) return void Object.assign(cam, to);
+  const from = { radius: cam.radius, elevation: cam.elevation };
+  const t0 = performance.now();
+  const step = (now: number) => {
+    const t = Math.min(1, (now - t0) / 900);
+    const e = t * t * (3 - 2 * t);
+    cam.radius = from.radius * (to.radius / from.radius) ** e;
+    cam.elevation = from.elevation + (to.elevation - from.elevation) * e;
+    if (t < 1) tween = requestAnimationFrame(step);
+  };
+  tween = requestAnimationFrame(step);
+}
+for (const b of document.querySelectorAll<HTMLButtonElement>("[data-view]")) b.addEventListener("click", () => flyTo(POSES[b.dataset.view!]));
+
+// ---- share link: written to the address bar only when asked ----
+document.querySelector("#share")!.addEventListener("click", () => {
+  const hash = `#${encodeView(settings, cam)}`;
+  const url = `${location.origin}${location.pathname}${location.search}${hash}`;
+  navigator.clipboard.writeText(url).then(
+    () => showToast("Link copied"),
+    () => {
+      history.replaceState(null, "", hash); // no clipboard access: leave the link in the address bar
+      showToast("Link is in the address bar");
+    },
+  );
+});
 document.querySelector("#reset-settings")!.addEventListener("click", () => {
   // Keep the quality that suits this device, and the reduced-motion rule for cruise.
   Object.assign(settings, DEFAULTS, { quality: settings.quality, cruise: DEFAULTS.cruise && !reducedMotion });
@@ -342,6 +394,10 @@ function updateFraming(): void {
 panel.addEventListener("toggle", updateFraming);
 window.addEventListener("resize", updateFraming);
 sideLayout.addEventListener("change", updateFraming);
+reducedQuery.addEventListener("change", () => {
+  reducedMotion = reducedQuery.matches;
+  updateFraming();
+});
 updateFraming();
 
 const hideBtn = document.querySelector<HTMLButtonElement>("#hide-ui")!;
@@ -382,6 +438,15 @@ document.addEventListener("keydown", (e) => {
   if (e.code === "KeyH") setUiHidden(!stage.classList.contains("ui-hidden"));
   else if (e.code === "KeyF") toggleFullscreen();
 });
+
+// Screen readers hear the zoom distance at most every 1.5 s, and only when it moved noticeably.
+const zoomLive = document.querySelector("#zoom-live")!;
+let spoken = cam.radius;
+window.setInterval(() => {
+  if (Math.abs(cam.radius / spoken - 1) < 0.05) return;
+  spoken = cam.radius;
+  zoomLive.textContent = `Distance ${spoken.toFixed(1)} Schwarzschild radii`;
+}, 1500);
 
 // ---- frame loop ----
 let simTime = 0;
@@ -464,13 +529,13 @@ document.querySelector("#snap")!.addEventListener("click", () => {
   }, "image/png");
 });
 
-// Test hook: lets e2e read back a frame without preserveDrawingBuffer.
+// Test hook, only with ?e2e in the URL: lets e2e read back a frame without preserveDrawingBuffer.
 declare global {
   interface Window {
     __bh?: { ready: () => boolean; milkyWay: () => boolean; radius: () => number; samples: () => number; setCamera: (c: Partial<Pick<OrbitCamera, "radius" | "azimuth" | "elevation">>) => void; sample: () => { w: number; h: number; mean: number; nonBlack: number; info: ReturnType<Renderer["info"]> } | null };
   }
 }
-window.__bh = {
+if (new URLSearchParams(location.search).has("e2e")) window.__bh = {
   ready: () => !!renderer,
   milkyWay: () => milkyWayLoaded,
   radius: () => cam.radius,

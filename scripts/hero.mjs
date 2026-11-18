@@ -17,7 +17,7 @@ for (const f of frames) {
   await page.addInitScript((s) => {
     localStorage.setItem("bh-settings", JSON.stringify({ quality: "ultra", auto: false, cruise: false, ...s }));
   }, f.settings);
-  await page.goto(url);
+  await page.goto(`${url}${url.includes("?") ? "&" : "?"}e2e`); // ?e2e exposes window.__bh
   await page.waitForFunction(() => window.__bh?.ready());
   if (!f.hud) await page.addStyleTag({ content: ".hud, .panel { display: none !important; }" });
   if (f.camera) await page.evaluate((c) => window.__bh.setCamera(c), f.camera);
