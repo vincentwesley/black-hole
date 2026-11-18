@@ -51,6 +51,17 @@ test("Milky Way map loads and adds light to the sky", async ({ page }) => {
   expect(withMw.mean).toBeGreaterThan(without.mean + 0.3);
 });
 
+test("a still view accumulates samples and restarts when the camera moves", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" }); // frozen time: the whole image accumulates
+  await open(page);
+  await page.waitForFunction(() => window.__bh?.ready() && window.__bh.samples() >= 8);
+  const before = await page.evaluate(() => window.__bh!.samples());
+  await page.evaluate(() => window.__bh!.setCamera({ azimuth: 0.5 }));
+  await expect.poll(() => page.evaluate(() => window.__bh!.samples())).toBeLessThan(before);
+  const s = await sample(page);
+  expect(s.mean).toBeGreaterThan(8);
+});
+
 test("zoom keys move the camera and the readout follows", async ({ page }) => {
   await open(page);
   await page.waitForFunction(() => window.__bh?.ready());

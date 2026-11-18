@@ -405,6 +405,7 @@ function params(): SceneParams {
     exposure: settings.exposure,
     starGain: 6 * settings.sky,
     milkyWay: settings.milkyWay,
+    animated: !reducedMotion,
   };
 }
 
@@ -418,7 +419,9 @@ function frame(now: number): void {
   applyKeys(dt);
   cam.update(dt, settings.cruise);
   shiftX += (targetShiftX - shiftX) * Math.min(1, dt * 6);
-  renderer.render(params());
+  // A converged still image stays on the canvas; no new frames until something changes.
+  const p = params();
+  if (!renderer.converged(p)) renderer.render(p);
 
   fpsAcc += dtMs;
   fpsFrames++;
@@ -464,13 +467,14 @@ document.querySelector("#snap")!.addEventListener("click", () => {
 // Test hook: lets e2e read back a frame without preserveDrawingBuffer.
 declare global {
   interface Window {
-    __bh?: { ready: () => boolean; milkyWay: () => boolean; radius: () => number; setCamera: (c: Partial<Pick<OrbitCamera, "radius" | "azimuth" | "elevation">>) => void; sample: () => { w: number; h: number; mean: number; nonBlack: number; info: ReturnType<Renderer["info"]> } | null };
+    __bh?: { ready: () => boolean; milkyWay: () => boolean; radius: () => number; samples: () => number; setCamera: (c: Partial<Pick<OrbitCamera, "radius" | "azimuth" | "elevation">>) => void; sample: () => { w: number; h: number; mean: number; nonBlack: number; info: ReturnType<Renderer["info"]> } | null };
   }
 }
 window.__bh = {
   ready: () => !!renderer,
   milkyWay: () => milkyWayLoaded,
   radius: () => cam.radius,
+  samples: () => renderer?.samples ?? 0,
   setCamera: (c) => Object.assign(cam, c),
   sample: () => {
     if (!renderer) return null;

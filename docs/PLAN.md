@@ -13,7 +13,7 @@ scripts/              build-stars.mjs (catalogue → public/data/stars.bin), bui
 tests/ (Vitest)       physics, stars, settings/quality/camera
 e2e/ (Playwright)     render sanity via pixel read-back, toggles, keys, theme, no-WebGL fallback, axe
 ```
-Render pipeline per frame: scene.frag (geodesics + disk + sky) → RGBA16F → bloom chain (5–7 mips) → composite (bloom mix, exposure, ACES, sRGB, dither).
+Render pipeline per frame: scene.frag (geodesics + disk + sky, plus one jittered sample into a ping-pong RGBA16F history, `src/render/accum.ts`) → RGBA16F → bloom chain (5–7 mips) → composite (bloom mix, exposure, ACES, sRGB, dither).
 
 ## MVP scope
 - Schwarzschild lensing per pixel, photon ring, primary + secondary disk images, shadow.
@@ -28,7 +28,7 @@ Render pipeline per frame: scene.frag (geodesics + disk + sky) → RGBA16F → b
 2. **M2 Ship** — e2e + axe, hero/fallback frames, Pages workflow, README, handover. ✅ (see HANDOVER.md)
 3. **M3 Polish (next)** — ideas ranked:
    1. ✅ Milky Way glow from NASA SVS Deep Star Maps behind the BSC stars (DECISIONS #16).
-   2. Temporal accumulation / jittered supersampling when the camera is still (crisper photon ring at no steady-state cost).
+   2. ✅ Temporal accumulation / jittered supersampling when the camera is still (DECISIONS #22).
    3. Kerr (spinning) hole option following James et al. 2015 (needs the Carter-constant equations; much heavier).
    4. Table-based fast path (Bruneton 2020) for the Low preset on phones.
    5. Free-flight camera (not just orbit) with relativistic aberration for a moving observer.

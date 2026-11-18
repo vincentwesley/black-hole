@@ -9,6 +9,7 @@ import { blackbodyTable, blackbodyXYZ, T_REF } from "../physics/color";
 import { temperatureTable } from "../physics/disk";
 import { bakeStarFaces, MILKY_WAY_SCALE, placeStars, worldToGalacticMatrix, type PlacedStars, type Star } from "../sky/stars";
 import type { Preset } from "./quality";
+import { Accumulator, jitter } from "./accum";
 
 export interface SceneParams {
   camPos: [number, number, number];
@@ -24,6 +25,7 @@ export interface SceneParams {
   exposure: number;
   starGain: number;
   milkyWay: boolean;
+  animated: boolean; // the disk moves with time; false when time is frozen (reduced motion)
 }
 
 interface Target {
@@ -50,6 +52,11 @@ export class Renderer {
   private tempRange: [number, number];
   private scene: Target | null = null;
   private mips: Target[] = [];
+  // History ping-pong: sceneFb[i] writes the scene plus hist[i] while reading the other one.
+  private hist: Target[] = [];
+  private sceneFb: WebGLFramebuffer[] = [];
+  private cur = 0;
+  private readonly accum = new Accumulator();
   private preset: Preset;
   private skySize = 0;
   private stars: PlacedStars = placeStars([]);
@@ -102,6 +109,7 @@ export class Renderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.accum.reset();
   }
 
   setStars(stars: Star[]): void {
@@ -118,9 +126,13 @@ export class Renderer {
 
   private deleteTargets(): void {
     const gl = this.gl;
-    for (const t of [this.scene, ...this.mips]) if (t) { gl.deleteFramebuffer(t.fb); gl.deleteTexture(t.tex); }
+    for (const t of [this.scene, ...this.mips, ...this.hist]) if (t) { gl.deleteFramebuffer(t.fb); gl.deleteTexture(t.tex); }
+    for (const fb of this.sceneFb) gl.deleteFramebuffer(fb);
     this.scene = null;
     this.mips = [];
+    this.hist = [];
+    this.sceneFb = [];
+    this.accum.reset();
   }
 
   private uploadSky(size: number): void {
@@ -132,6 +144,7 @@ export class Renderer {
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, this.floatTargets ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     this.skySize = size;
+    this.accum.reset();
   }
 
   private ensureTargets(w: number, h: number): void {
@@ -140,6 +153,15 @@ export class Renderer {
     const gl = this.gl;
     this.deleteTargets();
     this.scene = target(gl, w, h);
+    this.hist = [target(gl, w, h), target(gl, w, h)];
+    this.sceneFb = this.hist.map((t) => {
+      const fb = gl.createFramebuffer()!;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.scene!.tex, 0);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, t.tex, 0);
+      gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+      return fb;
+    });
     let mw = w, mh = h;
     for (let i = 0; i < this.preset.bloomLevels; i++) {
       mw = Math.max(1, mw >> 1);
@@ -149,6 +171,25 @@ export class Renderer {
     }
   }
 
+  /** Everything the accumulated image depends on; any change restarts the history. With the disk
+   * animating, the history holds only the sky layer, so disk settings and time stay out of it. */
+  private viewKey(p: SceneParams): number[] {
+    const k = [this.canvas.width, this.canvas.height, ...p.camPos, ...p.camBasis, p.fovY, ...p.shift, p.starGain, +p.milkyWay, p.bloom, p.exposure, +p.animated];
+    if (!p.animated) k.push(p.time, p.tempPeak, p.diskOuter, +p.doppler, +p.gravity);
+    return k;
+  }
+
+  /** True when the image for these params has fully converged: the caller can skip the frame
+   * (only when time is frozen; an animated disk still needs fresh frames). */
+  converged(p: SceneParams): boolean {
+    return this.floatTargets && !p.animated && this.accum.converged(this.viewKey(p));
+  }
+
+  /** Samples in the current history (0 without float targets). */
+  get samples(): number {
+    return this.accum.n;
+  }
+
   render(p: SceneParams): void {
     const gl = this.gl;
     const w = this.canvas.width, h = this.canvas.height;
@@ -156,9 +197,13 @@ export class Renderer {
     gl.bindVertexArray(this.vao);
     gl.disable(gl.BLEND);
 
-    // Scene
+    // Scene, plus one jittered sample into the history (float targets only).
     const direct = !this.floatTargets;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, direct ? null : this.scene!.fb);
+    const { index, weight } = direct ? { index: 0, weight: 1 } : this.accum.next(this.viewKey(p));
+    const [jx, jy] = jitter(index);
+    const prev = this.cur;
+    if (!direct) this.cur ^= 1;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, direct ? null : this.sceneFb[this.cur]);
     gl.viewport(0, 0, w, h);
     const s = this.progs.scene, u = this.uni.scene;
     gl.useProgram(s);
@@ -188,10 +233,19 @@ export class Renderer {
     gl.uniform1f(u.uExposure, p.exposure);
     gl.uniform2f(u.uBBRange, ...this.bbRange);
     gl.uniform2f(u.uTempRange, ...this.tempRange);
+    gl.uniform1f(u.uWeight, weight);
+    gl.uniform1f(u.uFull, p.animated ? 0 : 1);
+    // Animated: jitter only the sky lookup; frozen: jitter the ray itself.
+    const [sx, sy, rx, ry] = p.animated ? [jx, jy, 0, 0] : [0, 0, jx, jy];
+    gl.uniform2f(u.uSkyJitter, sx, sy);
+    gl.uniform2f(u.uJitterNdc, (2 * rx) / w, (2 * ry) / h);
     bindTex(gl, 0, gl.TEXTURE_CUBE_MAP, this.sky, u.uSky);
     bindTex(gl, 1, gl.TEXTURE_2D, this.bbTex, u.uBlackbody);
     bindTex(gl, 2, gl.TEXTURE_2D, this.tempTex, u.uTempTable);
     bindTex(gl, 3, gl.TEXTURE_2D, this.milkyWay, u.uMilkyWay);
+    // Own unit even without float targets: two sampler types on one unit fail the draw.
+    if (direct) gl.uniform1i(u.uHist, 4);
+    else bindTex(gl, 4, gl.TEXTURE_2D, this.hist[prev].tex, u.uHist);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     if (direct) return;
 

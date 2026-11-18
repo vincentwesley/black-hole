@@ -4,7 +4,8 @@
 precision highp float;
 
 in vec2 vUv;
-out vec4 outColor;
+layout(location = 0) out vec4 outColor; // HDR scene (or the tone-mapped canvas when uDirect)
+layout(location = 1) out vec4 outHist;  // running average of jittered samples (src/render/accum.ts)
 
 uniform vec3 uCamPos;
 uniform mat3 uCamBasis;      // columns: right, up, forward
@@ -31,6 +32,11 @@ uniform sampler2D uTempTable; // x: r in [rMin, rMax]; r = T / T_max (Novikov-Th
 uniform vec2 uTempRange;
 uniform float uDirect;        // 1 when there is no float target: tone-map here instead of in composite
 uniform float uExposure;
+uniform sampler2D uHist;      // previous history, read at this pixel
+uniform float uWeight;        // blend weight of this sample: 1 restarts the history, 0 keeps it
+uniform float uFull;          // 1: history holds the whole scene (time frozen); 0: only the sky layer
+uniform vec2 uJitterNdc;      // sub-pixel ray offset (full mode)
+uniform vec2 uSkyJitter;      // sub-pixel sky-lookup offset in pixels (sky mode; the ray stays put)
 
 const int HARD_MAX = 1024;
 
@@ -76,7 +82,7 @@ vec3 blackbody(float T) {
 }
 
 void main() {
-  vec2 ndc = vUv * 2.0 - 1.0 - uShift;
+  vec2 ndc = vUv * 2.0 - 1.0 - uShift + uJitterNdc;
   vec3 dir = normalize(uCamBasis * vec3(ndc * uTanHalfFov, 1.0));
 
   vec3 x = uCamPos;
@@ -147,10 +153,20 @@ void main() {
   vec2 uvx = dFdx(uv) * keepX, uvy = dFdy(uv) * keepY;
   uvx.x = (uvx.x - round(uvx.x)) * cos(bLat);
   uvy.x = (uvy.x - round(uvy.x)) * cos(bLat);
+  // Sky mode jitters only the sky lookup, by extrapolating along the screen gradients, so the
+  // animated disk from this same ray stays exactly where it is.
+  vec3 sky = vec3(0.0);
   if (escaped) {
-    vec3 sky = textureGrad(uSky, sd, sdx, sdy).rgb + textureGrad(uMilkyWay, uv, uvx, uvy).rgb * uMwGain;
-    col += trans * sky * uStarGain;
+    vec3 sdj = sd + uSkyJitter.x * sdx + uSkyJitter.y * sdy;
+    vec2 uvj = uv + uSkyJitter.x * uvx + uSkyJitter.y * uvy;
+    sky = (textureGrad(uSky, sdj, sdx, sdy).rgb + textureGrad(uMilkyWay, uvj, uvx, uvy).rgb * uMwGain) * uStarGain;
   }
-  if (uDirect > 0.5) col = toSrgb(aces(col * uExposure));
-  outColor = vec4(col, 1.0);
+  if (uDirect > 0.5) {
+    outColor = vec4(toSrgb(aces((col + trans * sky) * uExposure)), 1.0);
+    return;
+  }
+  vec3 cur = uFull > 0.5 ? col + trans * sky : sky;
+  vec3 h = uWeight >= 1.0 ? cur : mix(texelFetch(uHist, ivec2(gl_FragCoord.xy), 0).rgb, cur, uWeight);
+  outHist = vec4(h, 1.0);
+  outColor = vec4(uFull > 0.5 ? h : col + trans * h, 1.0);
 }

@@ -21,6 +21,7 @@ Needs WebGL2 (any current desktop or phone browser). Drag to orbit; pinch, Ctrl/
 - **Thin Novikov–Thorne disk** from the innermost stable orbit, coloured by Planck spectra through the CIE 1931 observer; Doppler and gravitational shifts applied as T → gT.
 - **Physical / Film looks**: Film switches off all frequency shifts, as the Interstellar disk did.
 - **Real sky**: the 9,096 stars of the Yale Bright Star Catalogue in galactic coordinates over NASA's Gaia-based Milky Way map, with the galactic centre lensed into an Einstein ring behind the hole.
+- **Progressive anti-aliasing when the view is still**: jittered samples (Halton 2,3) average into a float history, so stars and the Einstein ring settle into a clean image; any camera move restarts it instantly.
 - **Bloom** (Jimenez 2014) and **ACES** tone mapping on half-float targets.
 - **Quality presets** (Low/Medium/High/Ultra) plus an automatic step-down when frames get slow. Runs on software GL (SwiftShader) in headless browsers.
 - Mouse, touch and keyboard: drag to orbit, pinch / Ctrl+scroll / +− buttons to zoom, two-finger tilt on touch, arrows/WASD, +/−, Space, R. The render never traps page scrolling. Full screen (F), hide the interface (H), PNG snapshot.
